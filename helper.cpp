@@ -23,11 +23,11 @@ int check_arg(char *buffer) {
     return num;
 }
 
-/* Wrapper around sem_open with fewer inputs to create named semaphore and exit
+/* Wrapper around sem_open (with only inputs 'name' and 'value') to create named semaphore and exit
  * incase of failure. */
-sem_t *create_semaphore(const char *name, unsigned int val) {
+sem_t *create_semaphore(const char *name, unsigned int value) {
     errno = 0;
-    sem_t *s = sem_open(name, O_CREAT, 0644, val);
+    sem_t *s = sem_open(name, O_CREAT, 0644, value);
     if (s == SEM_FAILED) {
         cerr << "[Error] sem_open() failed to create named semaphore '" << name
              << "' with errno: " << errno << endl;

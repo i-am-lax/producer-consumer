@@ -26,7 +26,7 @@ using namespace std;
 # define SEM_KEY 0x17
 
 int check_arg (char *);
-sem_t * create_semaphore(const char *name, unsigned int val);
+sem_t * create_semaphore(const char *name, unsigned int value);
 // int sem_create (key_t, int);
 // int sem_init (int, int, int);
 // void sem_wait (int, short unsigned int);
