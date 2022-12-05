@@ -8,21 +8,31 @@
  * sem_close - Destroy the semaphore array
  ******************************************************************/
 
-# include "helper.h"
+#include "helper.h"
 
-int check_arg (char *buffer)
-{
-  int i, num = 0, temp = 0;
-  if (strlen (buffer) == 0)
-    return -1;
-  for (i=0; i < (int) strlen (buffer); i++)
-  {
-    temp = 0 + buffer[i];
-    if (temp > 57 || temp < 48)
-      return -1;
-    num += pow (10, strlen (buffer)-i-1) * (buffer[i] - 48);
-  }
-  return num;
+int check_arg(char *buffer) {
+    int i, num = 0, temp = 0;
+    if (strlen(buffer) == 0)
+        return -1;
+    for (i = 0; i < (int) strlen(buffer); i++) {
+        temp = 0 + buffer[i];
+        if (temp > 57 || temp < 48)
+            return -1;
+        num += pow(10, strlen(buffer) - i - 1) * (buffer[i] - 48);
+    }
+    return num;
+}
+
+/* Wrapper around sem_open with fewer inputs to create named semaphore and exit
+ * incase of failure. */
+sem_t *create_semaphore(const char *name, unsigned int val) {
+    sem_t *s = sem_open(name, O_CREAT, 0644, val);
+    if (s == (void *) -1) {
+        cerr << "[Error] sem_open() failed to create named semaphore '" << name
+             << "'" << endl;
+        exit(1);
+    }
+    return s;
 }
 
 // int sem_create (key_t key, int num)

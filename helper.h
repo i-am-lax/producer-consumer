@@ -14,16 +14,19 @@
 // # include <sys/sem.h>
 // # include <sys/time.h>
 # include <math.h>
-// # include <errno.h>
+# include <errno.h>
 # include <string.h>
 # include <pthread.h>
 // # include <ctype.h>
 # include <iostream>
+#include "semaphore.h"
+
 using namespace std;
 
 # define SEM_KEY 0x17
 
 int check_arg (char *);
+sem_t * create_semaphore(const char *name, unsigned int val);
 // int sem_create (key_t, int);
 // int sem_init (int, int, int);
 // void sem_wait (int, short unsigned int);

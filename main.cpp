@@ -63,51 +63,51 @@ int main(int argc, char **argv) {
     // populate global Buffer 'b'
     b.queue = boost::circular_buffer<Job>(qsize);
     b.njobs = njobs;
-    b.free = sem_open("/free", O_CREAT, 0644, qsize);
-    b.occupied = sem_open("/occupied", O_CREAT, 0644, 0);
-    b.mutex = sem_open("/mutex", O_CREAT, 0644, 1);
+    b.free = create_semaphore("/free", qsize);
+    b.occupied = create_semaphore("/occupied", 0);
+    b.mutex = sem_open("/mutex", 1);
 
-    // TODO: fn to create semaphore where you supply name and error checking
-    // done
-    if (b.free == (void *) -1) {
-        perror("sem_open() failed for semfree");
-    }
+    // // TODO: fn to create semaphore where you supply name and error checking
+    // // done
+    // // if (b.free == (void *) -1) {
+    // //     perror("sem_open() failed for semfree");
+    // // }
 
-    // store output of thread creation and joining for error handling
-    int pc;
+    // // store output of thread creation and joining for error handling
+    // int pc;
 
-    // Create producers based on nproducers
-    for (int p = 0; p < nproducers; p++) {
-        cout << "Creating producer thread: " << p << endl;
-        rc = pthread_create(&pthreads[p], NULL, producer, (void *) &p);
-        // TODO: error handling
-    }
+    // // Create producers based on nproducers
+    // for (int p = 0; p < nproducers; p++) {
+    //     cout << "Creating producer thread: " << p << endl;
+    //     rc = pthread_create(&pthreads[p], NULL, producer, (void *) &p);
+    //     // TODO: error handling
+    // }
 
-    // Create consumers based on nconsumers
-    for (int c = 0; c < nconsumers; c++)
-    {
-      cout << "Creating consumer thread: " << c << endl;
-      rc = pthread_create(&cthreads[c], NULL, consumer, (void *)&c);
-    }
+    // // Create consumers based on nconsumers
+    // for (int c = 0; c < nconsumers; c++)
+    // {
+    //   cout << "Creating consumer thread: " << c << endl;
+    //   rc = pthread_create(&cthreads[c], NULL, consumer, (void *)&c);
+    // }
 
-    // Join producers
-    for (int p = 0; p < nproducers; p++) {
-        rc = pthread_join(pthreads[p], NULL);
-        cout << "Joining producer thread: " << p << endl;
-        // TODO: error handling
-    }
+    // // Join producers
+    // for (int p = 0; p < nproducers; p++) {
+    //     rc = pthread_join(pthreads[p], NULL);
+    //     cout << "Joining producer thread: " << p << endl;
+    //     // TODO: error handling
+    // }
 
-    // Join consumers
-    for (int c = 0; c < nconsumers; c++)
-    {
-      rc = pthread_join(pthreads[c], NULL);
-      cout << "Joining consumer thread: " << c << endl;
-    }
+    // // Join consumers
+    // for (int c = 0; c < nconsumers; c++)
+    // {
+    //   rc = pthread_join(pthreads[c], NULL);
+    //   cout << "Joining consumer thread: " << c << endl;
+    // }
 
-    cout << "Destroy semaphores!!" << endl;
-    sem_close(b.free);
-    sem_close(b.occupied);
-    sem_close(b.mutex);
+    // cout << "Destroy semaphores!!" << endl;
+    // sem_close(b.free);
+    // sem_close(b.occupied);
+    // sem_close(b.mutex);
     
     return 0;
 }
@@ -117,29 +117,29 @@ void *producer(void *id) {
     // producer ID
     int *pid = (int *) id;
 
-    // given producer creates up maximum of 'njobs'
-    for (int j = 0; j < b.njobs; j++) {
-        // create job every 1 - 5 seconds
-        sleep(rand() % 5 + 1);
+    // // given producer creates up maximum of 'njobs'
+    // for (int j = 0; j < b.njobs; j++) {
+    //     // create job every 1 - 5 seconds
+    //     sleep(rand() % 5 + 1);
 
-        /* initiate locks -
-        - adding a job would decrement free slots available in queue
-        - mutex decremented so only one producer or consumer at a time */
-        sem_wait(b.free);
-        sem_wait(b.mutex);
+    //     /* initiate locks -
+    //     - adding a job would decrement free slots available in queue
+    //     - mutex decremented so only one producer or consumer at a time */
+    //     sem_wait(b.free);
+    //     sem_wait(b.mutex);
 
-        // create job and add to the queue
-        Job job = {b.queue.size(), rand() % 10 + 1};
-        b.queue.push_back(job);
-        cout << "Producer(" << *pid << "): Job id " << job.id << " duration "
-             << job.duration << endl;
+    //     // create job and add to the queue
+    //     Job job = {b.queue.size(), rand() % 10 + 1};
+    //     b.queue.push_back(job);
+    //     cout << "Producer(" << *pid << "): Job id " << job.id << " duration "
+    //          << job.duration << endl;
 
-        /* release locks -
-        - mutex incremented so producer or consumer can execute 
-        - occupied incremented to signal consumer to process job */
-        sem_post(b.mutex);
-        sem_post(b.occupied);
-    }
+    //     /* release locks -
+    //     - mutex incremented so producer or consumer can execute 
+    //     - occupied incremented to signal consumer to process job */
+    //     sem_post(b.mutex);
+    //     sem_post(b.occupied);
+    // }
 
     pthread_exit(0);
 }
@@ -149,23 +149,23 @@ void *consumer(void *id) {
   // consumer ID
     int *cid = (int *) id;
 
-    /* initiate locks - */
-    sem_wait(b.occupied);
-    sem_wait(b.mutex);
+    // /* initiate locks - */
+    // sem_wait(b.occupied);
+    // sem_wait(b.mutex);
 
-    // take job from front of queue
-    Job job = b.queue[0];
-    b.queue.pop_front();
-    cout << "Consumer(" << *cid << "): Job id " << job.id << " executing sleep duration "
-          << job.duration << endl;
+    // // take job from front of queue
+    // Job job = b.queue[0];
+    // b.queue.pop_front();
+    // cout << "Consumer(" << *cid << "): Job id " << job.id << " executing sleep duration "
+    //       << job.duration << endl;
 
-    /* release locks - */
-    sem_post(b.mutex);
-    sem_post(b.free);
+    // /* release locks - */
+    // sem_post(b.mutex);
+    // sem_post(b.free);
     
-    // process job
-    sleep(job.duration);
-    cout << "Consumer(" << *cid << "): Job id " << job.id << " completed" << endl;
+    // // process job
+    // sleep(job.duration);
+    // cout << "Consumer(" << *cid << "): Job id " << job.id << " completed" << endl;
 
     pthread_exit(0);
 }
