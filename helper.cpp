@@ -36,22 +36,3 @@ void close_semaphore(sem_t *sem) {
         cerr << "[Error] sem_close() failed with errno: " << errno << endl;
     }
 }
-
-/* Wrapped around pthread_create() to iteratively create 'nthreads' number of
- * threads and execute 'start_routine'. Incase of failure, an error message is
- * printed and we exit. If successful, we return a pointer to an array containing
- * the thread IDs. */
-pthread_t *create_threads(int nthreads, void *(*start_routine)(void *) ) {
-    int ret;
-    pthread_t threads[nthreads];
-    for (int n = 0; n < nthreads; n++) {
-        cout << "Creating thread: " << n << endl;
-        ret = pthread_create(&threads[n], NULL, start_routine, (void *) &n);
-        if (ret) {
-            cerr << "[Error] pthread_create() failed with return code: " << ret
-                 << endl;
-            exit(1);
-        }
-    }
-    return threads;
-}

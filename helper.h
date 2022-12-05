@@ -58,4 +58,4 @@ void close_semaphore(sem_t *sem);
 
 /* Create 'nthreads' number of threads and execute 'start_routine'. Return a
  * pointer to an array containing the thread IDs. */
-pthread_t *create_threads(int nthreads, void *(*start_routine)(void *) );
+// pthread_t *create_threads(int nthreads, void *(*start_routine)(void *) );
