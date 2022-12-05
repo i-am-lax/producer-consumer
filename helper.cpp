@@ -1,15 +1,7 @@
-/******************************************************************
- * The helper file that contains the following helper functions:
- * check_arg - Checks if command line input is a number and returns it
- * sem_create - Create number of sempahores required in a semaphore array
- * sem_init - Initialise particular semaphore in semaphore array
- * sem_wait - Waits on a semaphore (akin to down ()) in the semaphore array
- * sem_signal - Signals a semaphore (akin to up ()) in the semaphore array
- * sem_close - Destroy the semaphore array
- ******************************************************************/
-
 #include "helper.h"
 
+/* Check if a given command-line input ('buffer') is an integer and if so,
+ * return it. */
 int check_arg(char *buffer) {
     int i, num = 0, temp = 0;
     if (strlen(buffer) == 0)
@@ -23,8 +15,8 @@ int check_arg(char *buffer) {
     return num;
 }
 
-/* Wrapper around sem_open (with only inputs 'name' and 'value') to create named semaphore and exit
- * incase of failure. */
+/* Wrapper around sem_open (with only inputs 'name' and 'value') to create named
+ * semaphore and exit incase of failure. */
 sem_t *create_semaphore(const char *name, unsigned int value) {
     errno = 0;
     sem_t *s = sem_open(name, O_CREAT, 0644, value);
@@ -36,42 +28,30 @@ sem_t *create_semaphore(const char *name, unsigned int value) {
     return s;
 }
 
-// int sem_create (key_t key, int num)
-// {
-//   int id;
-//   if ((id = semget (key, num,  0666 | IPC_CREAT | IPC_EXCL)) < 0)
-//     return -1;
-//   return id;
-// }
+/* Wrapper around sem_close to close a named sempahore pointed to by 'sem'. If
+this is unsuccessful an error message is printed. */
+void close_semaphore(sem_t *sem) {
+    errno = 0;
+    if (sem_close(sem) == -1) {
+        cerr << "[Error] sem_close() failed with errno: " << errno << endl;
+    }
+}
 
-// int sem_init (int id, int num, int value)
-// {
-//   union semun semctl_arg;
-//   semctl_arg.val = value;
-//   if (semctl (id, num, SETVAL, semctl_arg) < 0)
-//     return -1;
-//   return 0;
-// }
-
-// void sem_wait (int id, short unsigned int num)
-// {
-//   struct sembuf op[] = {
-//     {num, -1, SEM_UNDO}
-//   };
-//   semop (id, op, 1);
-// }
-
-// void sem_signal (int id, short unsigned int num)
-// {
-//   struct sembuf op[] = {
-//     {num, 1, SEM_UNDO}
-//   };
-//   semop (id, op, 1);
-// }
-
-// int sem_close (int id)
-// {
-//   if (semctl (id, 0, IPC_RMID, 0) < 0)
-//     return -1;
-//   return 0;
-// }
+/* Wrapped around pthread_create() to iteratively create 'nthreads' number of
+ * threads and execute 'start_routine'. Incase of failure, an error message is
+ * printed and we exit. If successful, we return a pointer to an array containing
+ * the thread IDs. */
+pthread_t *create_threads(int nthreads, void *(*start_routine)(void *) ) {
+    int ret;
+    pthread_t threads[nthreads];
+    for (int n = 0; n < nthreads; n++) {
+        cout << "Creating thread: " << n << endl;
+        ret = pthread_create(&threads[n], NULL, start_routine, (void *) &n);
+        if (ret) {
+            cerr << "[Error] pthread_create() failed with return code: " << ret
+                 << endl;
+            exit(1);
+        }
+    }
+    return threads;
+}

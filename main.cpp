@@ -13,31 +13,8 @@
  ******************************************************************/
 
 #include "helper.h"
-#include "semaphore.h"
-#include <boost/circular_buffer.hpp>
 
 using namespace std;
-
-/* Job is made up of -
-- id (the location that it occupies in the queue)
-- duration (the time taken to process the job in seconds) */
-struct Job {
-    int id;
-    int duration;
-};
-
-/* Buffer comprises of the circular queue, total jobs per producer, and pointers
-to semaphores to be passed to the producers and consumers. Semaphores:
-- free -> represents free space in queue
-- occupied -> represents presence of jobs in queue
-- mutex -> ensures mutual exclusion between producers and consumers */
-struct Buffer {
-    boost::circular_buffer<Job> queue;
-    sem_t *free;
-    sem_t *occupied;
-    sem_t *mutex;
-    int njobs;
-};
 
 /* Producer function declaration:
 - ... */
@@ -52,63 +29,44 @@ Buffer b;
 
 int main(int argc, char **argv) {
     // read in command-line arguments
-    int qsize = check_arg(argv[2]);
-    int njobs = check_arg(argv[1]);
+    int qsize = check_arg(argv[1]);
+    int njobs = check_arg(argv[2]);
     int nproducers = check_arg(argv[3]);
     int nconsumers = check_arg(argv[4]);
-
-    // create array of thread IDs for producers and consumers
-    pthread_t pthreads[nproducers], cthreads[nconsumers];
 
     // populate global Buffer 'b'
     b.queue = boost::circular_buffer<Job>(qsize);
     b.njobs = njobs;
     b.free = create_semaphore("/free", qsize);
     b.occupied = create_semaphore("/occupied", 0);
-    b.mutex = sem_open("/mutex", 1);
+    b.mutex = create_semaphore("/mutex", 1);
 
-    // // TODO: fn to create semaphore where you supply name and error checking
-    // // done
-    // // if (b.free == (void *) -1) {
-    // //     perror("sem_open() failed for semfree");
-    // // }
+    // Create producers based on nproducers
+    pthread_t *pthreads = create_threads(nproducers, producer);
+    // Create consumers based on nconsumers
+    pthread_t *cthreads = create_threads(nconsumers, consumer);
 
-    // // store output of thread creation and joining for error handling
-    // int pc;
+    // Join producers
+    for (int p = 0; p < nproducers; p++) {
+        cout << "THREAD CONTENTS: " << pthreads[p] << endl;
+        pthread_join(pthreads[p], NULL);
+        cout << "Joining producer thread: " << p << endl;
+        // TODO: error handling
+    }
 
-    // // Create producers based on nproducers
-    // for (int p = 0; p < nproducers; p++) {
-    //     cout << "Creating producer thread: " << p << endl;
-    //     rc = pthread_create(&pthreads[p], NULL, producer, (void *) &p);
-    //     // TODO: error handling
-    // }
+    // Join consumers
+    for (int c = 0; c < nconsumers; c++)
+    {
+      cout << "THREAD CONTENTS: " << pthreads[p] << endl;
+      pthread_join(pthreads[c], NULL);
+      cout << "Joining consumer thread: " << c << endl;
+    }
 
-    // // Create consumers based on nconsumers
-    // for (int c = 0; c < nconsumers; c++)
-    // {
-    //   cout << "Creating consumer thread: " << c << endl;
-    //   rc = pthread_create(&cthreads[c], NULL, consumer, (void *)&c);
-    // }
+    // close named semaphores
+    close_semaphore(b.free);
+    close_semaphore(b.occupied);
+    close_semaphore(b.mutex);
 
-    // // Join producers
-    // for (int p = 0; p < nproducers; p++) {
-    //     rc = pthread_join(pthreads[p], NULL);
-    //     cout << "Joining producer thread: " << p << endl;
-    //     // TODO: error handling
-    // }
-
-    // // Join consumers
-    // for (int c = 0; c < nconsumers; c++)
-    // {
-    //   rc = pthread_join(pthreads[c], NULL);
-    //   cout << "Joining consumer thread: " << c << endl;
-    // }
-
-    // cout << "Destroy semaphores!!" << endl;
-    // sem_close(b.free);
-    // sem_close(b.occupied);
-    // sem_close(b.mutex);
-    
     return 0;
 }
 
@@ -135,7 +93,7 @@ void *producer(void *id) {
     //          << job.duration << endl;
 
     //     /* release locks -
-    //     - mutex incremented so producer or consumer can execute 
+    //     - mutex incremented so producer or consumer can execute
     //     - occupied incremented to signal consumer to process job */
     //     sem_post(b.mutex);
     //     sem_post(b.occupied);
@@ -146,7 +104,7 @@ void *producer(void *id) {
 
 // TODO: add while loop and 20s timeout
 void *consumer(void *id) {
-  // consumer ID
+    // consumer ID
     int *cid = (int *) id;
 
     // /* initiate locks - */
@@ -156,16 +114,18 @@ void *consumer(void *id) {
     // // take job from front of queue
     // Job job = b.queue[0];
     // b.queue.pop_front();
-    // cout << "Consumer(" << *cid << "): Job id " << job.id << " executing sleep duration "
+    // cout << "Consumer(" << *cid << "): Job id " << job.id << " executing
+    // sleep duration "
     //       << job.duration << endl;
 
     // /* release locks - */
     // sem_post(b.mutex);
     // sem_post(b.free);
-    
+
     // // process job
     // sleep(job.duration);
-    // cout << "Consumer(" << *cid << "): Job id " << job.id << " completed" << endl;
+    // cout << "Consumer(" << *cid << "): Job id " << job.id << " completed" <<
+    // endl;
 
     pthread_exit(0);
 }
