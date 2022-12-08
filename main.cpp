@@ -47,12 +47,14 @@ int main(int argc, char **argv) {
     /* Populate Buffer data structure 'b' to be shared across threads
      * queue -> circular buffer with slots 'qsize' and of type 'Job'
      * njobs -> number of jobs per producer given by 'njobs'
+     * ts.tvsec -> maximum waiting time for producers and consumers
      * free -> semaphore (initial value 'qsize') for free slots in 'queue'
      * occupied -> semaphore (initial value 0) for whether or not a job is
      * available in 'queue'
      * mutex -> semaphore (initial value 1) to represent mutual exclusivity */
     b.queue = boost::circular_buffer<Job>(qsize);
     b.njobs = njobs;
+    b.ts.tv_sec = time(NULL) + timeout;
     // create semaphores and assign to pointers in b
     sem_t free, occupied, mutex;
     create_semaphore(&free, qsize);
@@ -135,10 +137,7 @@ void *producer(void *id) {
         /* initiate locks -
         - adding a job would decrement free slots available in queue
         - mutex decremented so only one producer or consumer at a time */
-        struct timespec ts;
-        ts.tv_sec = time(NULL) + timeout;
-
-        if (sem_timedwait(b.free, &ts) == -1) {
+        if (sem_timedwait(b.free, &b.ts) == -1) {
             cout << "Producer(" << *pid << "): Timeout after 20 seconds"
                  << endl;
             pthread_exit(0);
@@ -177,13 +176,10 @@ void *consumer(void *id) {
 
     while (true) {
 
-        struct timespec ts;
-        ts.tv_sec = time(NULL) + timeout;
-
         /* initiate locks -
         - consuming a job would decrement number of jobs occupying queue
         - mutex decremented so only one producer / consumer at a time */
-        if (sem_timedwait(b.occupied, &ts) == -1) {
+        if (sem_timedwait(b.occupied, &b.ts) == -1) {
             cout << "Consumer(" << *cid << "): No more jobs left." << endl;
             pthread_exit(0);
         }

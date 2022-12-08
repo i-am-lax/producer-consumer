@@ -11,6 +11,7 @@
 #include <math.h>
 #include <pthread.h>
 #include <string.h>
+#include <time.h>
 
 using namespace std;
 
@@ -28,13 +29,15 @@ struct Job {
  * njobs -> number of jobs per producer
  * free -> represents free space in queue
  * occupied -> represents presence of jobs in queue
- * mutex -> ensures mutual exclusivity between producers and consumers */
+ * mutex -> ensures mutual exclusivity between producers and consumers
+ * ts -> store timeout in seconds for producers and consumers */
 struct Buffer {
     boost::circular_buffer<Job> queue;
     sem_t *free;
     sem_t *occupied;
     sem_t *mutex;
     int njobs;
+    struct timespec ts;
 };
 
 /* Check if the characters in a given command-line input ('buffer') can be
