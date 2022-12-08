@@ -44,12 +44,15 @@ int main(int argc, char **argv) {
              << endl;
         exit(1);
     }
+    cout << "Passed arg check.." << endl;
 
     // Validate command-line arguments and initialise variables
     int qsize = check_arg(argv[1]);
     int njobs = check_arg(argv[2]);
     int nproducers = check_arg(argv[3]);
     int nconsumers = check_arg(argv[4]);
+
+    cout << "Read in arguments." << endl;
 
     /* Populate Buffer data structure 'b' to be shared across threads
      * queue -> circular buffer with slots 'qsize' and of type 'Job'
@@ -60,51 +63,52 @@ int main(int argc, char **argv) {
      * mutex -> semaphore (initial value 1) to represent mutual exclusivity */
     b.queue = boost::circular_buffer<Job>(qsize);
     b.njobs = njobs;
-    b.free = create_semaphore("/free", qsize);
-    b.occupied = create_semaphore("/occupied", 0);
-    b.mutex = create_semaphore("/mutex", 1);
+    cout << "Initialised queue and njobs" << endl;
+    create_semaphore(b.free, qsize);
+    create_semaphore(b.occupied, 0);
+    create_semaphore(b.mutex, 1);
 
-    /* Initisalise arrays:
-     * pids -> producer IDs
-     * cids -> consumer IDs
-     * pthreads -> thread IDs for producers
-     * cthreads -> thread IDs for consumers */
-    pthread_t pthreads[nproducers], cthreads[nconsumers];
-    int pids[nproducers], cids[nconsumers];
+    // /* Initisalise arrays:
+    //  * pids -> producer IDs
+    //  * cids -> consumer IDs
+    //  * pthreads -> thread IDs for producers
+    //  * cthreads -> thread IDs for consumers */
+    // pthread_t pthreads[nproducers], cthreads[nconsumers];
+    // int pids[nproducers], cids[nconsumers];
 
-    /* Iteratively create producer threads based on 'nproducers' and execute
-     * 'producer' on each. Store the thread ID in 'pthreads' and producer ID in
-     * 'pids'. Incase of failure, output an error message with code. */
-    for (int n = 0; n < nproducers; n++) {
-        pids[n] = n;
-        int ret =
-            pthread_create(&pthreads[n], NULL, producer, (void *) &pids[n]);
-        if (ret) {
-            cerr << "[Error] pthread_create() for Producer(" << n
-                 << ") failed with return code: " << ret << endl;
-            exit(1);
-        }
-    }
+    // /* Iteratively create producer threads based on 'nproducers' and execute
+    //  * 'producer' on each. Store the thread ID in 'pthreads' and producer ID in
+    //  * 'pids'. Incase of failure, output an error message with code. */
+    // for (int n = 0; n < nproducers; n++) {
+    //     pids[n] = n;
+    //     int ret =
+    //         pthread_create(&pthreads[n], NULL, producer, (void *) &pids[n]);
+    //     if (ret) {
+    //         cerr << "[Error] pthread_create() for Producer(" << n
+    //              << ") failed with return code: " << ret << endl;
+    //         exit(1);
+    //     }
+    // }
 
-    /* Create consumer threads based on 'nconsumers' in the same manner as for
-     * producers. */
-    for (int n = 0; n < nconsumers; n++) {
-        cids[n] = n;
-        int ret =
-            pthread_create(&cthreads[n], NULL, consumer, (void *) &cids[n]);
-        if (ret) {
-            cerr << "[Error] pthread_create() for Consumer(" << n
-                 << ") failed with return code: " << ret << endl;
-            exit(1);
-        }
-    }
+    // /* Create consumer threads based on 'nconsumers' in the same manner as for
+    //  * producers. */
+    // for (int n = 0; n < nconsumers; n++) {
+    //     cids[n] = n;
+    //     int ret =
+    //         pthread_create(&cthreads[n], NULL, consumer, (void *) &cids[n]);
+    //     if (ret) {
+    //         cerr << "[Error] pthread_create() for Consumer(" << n
+    //              << ") failed with return code: " << ret << endl;
+    //         exit(1);
+    //     }
+    // }
 
-    // Join producer and consumer threads so we wait for them to finish
-    join_threads(pthreads, nproducers);
-    join_threads(cthreads, nconsumers);
+    // // Join producer and consumer threads so we wait for them to finish
+    // join_threads(pthreads, nproducers);
+    // join_threads(cthreads, nconsumers);
 
     // close named semaphores
-    cout << "close sempahores!" << endl;
+    cout << "close semaphores!" << endl;
     close_semaphore(b.free);
     close_semaphore(b.occupied);
     close_semaphore(b.mutex);

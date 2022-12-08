@@ -15,24 +15,24 @@ int check_arg(char *buffer) {
     return num;
 }
 
-/* Wrapper around sem_open (with only inputs 'name' and 'value') to create named
+/* Wrapper around sem_init (with only inputs 'name' and 'value') to create named
  * semaphore and exit incase of failure. */
-sem_t *create_semaphore(const char *name, unsigned int value) {
+bool create_semaphore(sem_t *sem, unsigned int value) {
     errno = 0;
-    sem_t *s = sem_open(name, O_CREAT, 0644, value);
-    if (s == SEM_FAILED) {
+    int rc = sem_init(sem, 1, value);
+    if (s == -1) {
         cerr << "[Error] sem_open() failed to create named semaphore '" << name
              << "' with errno: " << errno << endl;
         exit(1);
     }
-    return s;
+    return true;
 }
 
-/* Wrapper around sem_close to close a named sempahore pointed to by 'sem'. If
+/* Wrapper around sem_destroy to destroy a semaphore pointed to by 'sem'. If
 this is unsuccessful an error message is printed. */
-void close_semaphore(sem_t *sem) {
+void destroy_semaphore(sem_t *sem) {
     errno = 0;
-    if (sem_close(sem) == -1) {
+    if (sem_destroy(sem) == -1) {
         cerr << "[Error] sem_close() failed with errno: " << errno << endl;
     }
 }

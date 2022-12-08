@@ -49,9 +49,9 @@ struct Buffer {
 // Check if a command-line input is an integer and return it
 int check_arg(char *);
 
-/* Create a named sempahore ('name') with an initial integer value ('value').
- * Return a pointer to the semaphore. */
-sem_t *create_semaphore(const char *name, unsigned int value);
+/* Create a sempahore with an initial integer value ('value').
+ * Return true if successful. */
+bool create_semaphore(sem_t *sem, unsigned int value);
 
-// Close a named sempahore pointed to by 'sem'
-void close_semaphore(sem_t *sem);
+// Destroy a named sempahore pointed to by 'sem'
+void destroy_semaphore(sem_t *sem)
