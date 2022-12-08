@@ -44,13 +44,13 @@ struct Buffer {
  * represented as an integer. If so, then return it. */
 int check_arg(char *buffer);
 
-/* Create an unnamed semaphore with an initial integer value ('value') and store
+/* Initialise an unnamed semaphore with an integer value ('value') and store
  * the address in 'sem'. Return true if successful. */
-bool create_semaphore(sem_t *sem, unsigned int value);
+bool semaphore_init(sem_t *sem, unsigned int value);
 
 /* Destroy an unnamed semaphore at the address pointed to by 'sem'.  Return true
  * if successful. */
-bool destroy_semaphore(sem_t *sem);
+bool semaphore_destroy(sem_t *sem);
 
 /* Iteratively join threads based on IDs in 'threads' array of size 'nthreads'.
  * Return true if successful. */

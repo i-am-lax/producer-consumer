@@ -47,7 +47,7 @@ int main(int argc, char **argv) {
     /* Populate Buffer data structure 'b' to be shared across threads
      * queue -> circular buffer with slots 'qsize' and of type 'Job'
      * njobs -> number of jobs per producer given by 'njobs'
-     * ts.tvsec -> maximum waiting time for producers and consumers
+     * ts -> store maximum waiting time for producers and consumers
      * free -> semaphore (initial value 'qsize') for free slots in 'queue'
      * occupied -> semaphore (initial value 0) for whether or not a job is
      * available in 'queue'
@@ -57,9 +57,9 @@ int main(int argc, char **argv) {
     b.ts.tv_sec = time(NULL) + timeout;
     // create semaphores and assign to pointers in b
     sem_t free, occupied, mutex;
-    create_semaphore(&free, qsize);
-    create_semaphore(&occupied, 0);
-    create_semaphore(&mutex, 1);
+    semaphore_init(&free, qsize);
+    semaphore_init(&occupied, 0);
+    semaphore_init(&mutex, 1);
     b.free = &free;
     b.occupied = &occupied;
     b.mutex = &mutex;
@@ -80,8 +80,8 @@ int main(int argc, char **argv) {
         int rc =
             pthread_create(&pthreads[n], NULL, producer, (void *) &pids[n]);
         if (rc) {
-            cerr << "[Error] pthread_create() for Producer(" << n
-                 << ") failed with return code: " << rc << endl;
+            cerr << "[Error creating thread] pthread_create() for Producer(" << n + 1
+                 << ") failed with error code: " << rc << endl;
             exit(1);
         }
     }
@@ -93,8 +93,8 @@ int main(int argc, char **argv) {
         int rc =
             pthread_create(&cthreads[n], NULL, consumer, (void *) &cids[n]);
         if (rc) {
-            cerr << "[Error] pthread_create() for Consumer(" << n
-                 << ") failed with return code: " << rc << endl;
+            cerr << "[Error creating thread] pthread_create() for Consumer(" << n + 1
+                 << ") failed with error code: " << rc << endl;
             exit(1);
         }
     }
@@ -104,9 +104,9 @@ int main(int argc, char **argv) {
     join_threads(cthreads, nconsumers);
 
     // Destroy semaphores
-    destroy_semaphore(b.free);
-    destroy_semaphore(b.occupied);
-    destroy_semaphore(b.mutex);
+    semaphore_destroy(b.free);
+    semaphore_destroy(b.occupied);
+    semaphore_destroy(b.mutex);
 
     return 0;
 }
