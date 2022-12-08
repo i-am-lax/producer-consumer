@@ -54,4 +54,4 @@ int check_arg(char *);
 bool create_semaphore(sem_t *sem, unsigned int value);
 
 // Destroy a named sempahore pointed to by 'sem'
-void destroy_semaphore(sem_t *sem)
+void destroy_semaphore(sem_t *sem);
