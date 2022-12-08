@@ -146,7 +146,7 @@ void *producer(void *id) {
         sem_wait(b.mutex);
 
         // create job and add to the queue
-        job = {b.queue.size(), rand() % 10 + 1};
+        job = {(int) b.queue.size(), rand() % 10 + 1};
         b.queue.push_back(job);
 
         /* release locks -
