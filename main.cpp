@@ -30,10 +30,10 @@ bool join_threads(pthread_t *threads, int &nthreads);
 
 // Global Buffer variable to be shared across threads
 Buffer b;
-int timeout = 20;
+const int timeout = 20;
 
-struct timespec ts;
-ts.tv_sec = time(NULL) + timeout;
+// struct timespec ts;
+// ts.tv_sec = time(NULL) + timeout;
 
 int main(int argc, char **argv) {
 
