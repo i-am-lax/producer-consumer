@@ -180,30 +180,32 @@ void *consumer(void *id) {
     int *cid = (int *) id;
 
     // TODO: do not print or anything during lock phase
+    while (true) {
 
-    /* initiate locks - */
-    struct timespec ts;
-    ts.tv_sec = time(NULL) + timeout;
-    if (sem_timedwait(b.occupied, &ts) == -1) {
-        cout << "Consumer(" << *cid << "): Timeout after 20 seconds" << endl;
-        pthread_exit(0);
+        /* initiate locks - */
+        struct timespec ts;
+        ts.tv_sec = time(NULL) + timeout;
+        if (sem_timedwait(b.occupied, &ts) == -1) {
+            cout << "Consumer(" << *cid << "): Timeout after 20 seconds" << endl;
+            pthread_exit(0);
+        }
+        sem_wait(b.mutex);
+
+        // take job from front of queue
+        Job job = b.queue[0];
+        b.queue.pop_front();
+        cout << "Consumer(" << *cid << "): Job id " << job.id
+            << " executing sleep duration " << job.duration << endl;
+
+        /* release locks - */
+        sem_post(b.mutex);
+        sem_post(b.free);
+
+        // process job
+        sleep(job.duration);
+        cout << "Consumer(" << *cid << "): Job id " << job.id << " completed"
+            << endl;
     }
-    sem_wait(b.mutex);
 
-    // take job from front of queue
-    Job job = b.queue[0];
-    b.queue.pop_front();
-    cout << "Consumer(" << *cid << "): Job id " << job.id
-         << " executing sleep duration " << job.duration << endl;
-
-    /* release locks - */
-    sem_post(b.mutex);
-    sem_post(b.free);
-
-    // process job
-    sleep(job.duration);
-    cout << "Consumer(" << *cid << "): Job id " << job.id << " completed"
-         << endl;
-
-    pthread_exit(0);
+    // pthread_exit(0);
 }
