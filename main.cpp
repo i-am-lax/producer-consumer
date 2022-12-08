@@ -6,34 +6,27 @@
  - number of producers
  - number of consumers
  Example execution: ./main 5 6 2 3
-
- Please note that MacOS doesn’t support unnamed semaphores
- (sem_init() and sem_destroy()), only named semaphores
- (sem_open()) and sem_close()).
  ******************************************************************/
 
 #include "helper.h"
 
 using namespace std;
 
-/* Producer function takes in a unique 'id' to represent the producer. The
+// Global Buffer variable to be shared across threads
+Buffer b;
+
+/* Global timeout constant to represent max wait time for both producers and
+ * consumers before terminating thread */
+const int timeout = 20;
+
+/* Producer routine takes in a unique 'id' to represent the producer. The
  * producer creates a maximum of n jobs every 1 to 5 seconds and adds them to a
  * circular queue. */
 void *producer(void *id);
 
-/* Consumer function takes in a unique 'id' to represent the consumer. The
+/* Consumer routine takes in a unique 'id' to represent the consumer. The
  * consumer takes jobs from the front of the queue and processes them. */
 void *consumer(void *id);
-
-/* Join threads given by IDs in 'threads' array with size 'nthreads' */
-bool join_threads(pthread_t *threads, int &nthreads);
-
-// Global Buffer variable to be shared across threads
-Buffer b;
-const int timeout = 20;
-
-// struct timespec ts;
-// ts.tv_sec = time(NULL) + timeout;
 
 int main(int argc, char **argv) {
 
@@ -44,15 +37,12 @@ int main(int argc, char **argv) {
              << endl;
         exit(1);
     }
-    cout << "Passed arg check.." << endl;
 
     // Validate command-line arguments and initialise variables
     int qsize = check_arg(argv[1]);
     int njobs = check_arg(argv[2]);
     int nproducers = check_arg(argv[3]);
     int nconsumers = check_arg(argv[4]);
-
-    cout << "Read in arguments." << endl;
 
     /* Populate Buffer data structure 'b' to be shared across threads
      * queue -> circular buffer with slots 'qsize' and of type 'Job'
@@ -63,7 +53,6 @@ int main(int argc, char **argv) {
      * mutex -> semaphore (initial value 1) to represent mutual exclusivity */
     b.queue = boost::circular_buffer<Job>(qsize);
     b.njobs = njobs;
-    cout << "Initialised queue and njobs" << endl;
     sem_t free, occupied, mutex;
     create_semaphore(&free, qsize);
     create_semaphore(&occupied, 0);
@@ -112,8 +101,7 @@ int main(int argc, char **argv) {
     join_threads(pthreads, nproducers);
     join_threads(cthreads, nconsumers);
 
-    // close named semaphores
-    cout << "close semaphores!" << endl;
+    // Destroy semaphores
     destroy_semaphore(b.free);
     destroy_semaphore(b.occupied);
     destroy_semaphore(b.mutex);
@@ -121,18 +109,16 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-bool join_threads(pthread_t *threads, int &nthreads) {
-    for (int t = 0; t < nthreads; t++) {
-        int ret = pthread_join(threads[t], NULL);
-        if (ret) {
-            cerr
-                << "[Error] pthread_join() for thread failed with return code: "
-                << ret << endl;
-        }
-    }
-    return true;
-}
-
+/* Routine for each producer thread:
+ * - Producer identified with unique 'id'
+ * - Create a job every 1 - 5 seconds (up to a maximum number of jobs based on
+ * user input) and add to the circular queue
+ * -  Duration for each job is between 1 – 10 seconds
+ * - If a job is taken by the consumer, then another job can be produced which
+ * has the same id
+ * - If queue is full, block while waiting for an empty slot until timeout
+ * reached upon which thread terminated
+ * - Otherwise thread terminated when all jobs produced */
 void *producer(void *id) {
 
     // producer ID
@@ -175,7 +161,11 @@ void *producer(void *id) {
     pthread_exit(0);
 }
 
-// TODO: add while loop and 20s timeout
+/* Routine for each consumer thread:
+ * - Consumer identified with unique 'id'
+ * - Take a job from the circular queue and sleep for the specified duration
+ * - If there are no jobs in the queue, wait until timeout reached upon
+ * which thread is terminated. */
 void *consumer(void *id) {
     // consumer ID
     int *cid = (int *) id;
@@ -196,7 +186,7 @@ void *consumer(void *id) {
         Job job = b.queue[0];
         b.queue.pop_front();
         cout << "Consumer(" << *cid << "): Job id " << job.id
-            << " executing sleep duration " << job.duration << endl;
+             << " executing sleep duration " << job.duration << endl;
 
         /* release locks - */
         sem_post(b.mutex);
@@ -205,8 +195,6 @@ void *consumer(void *id) {
         // process job
         sleep(job.duration);
         cout << "Consumer(" << *cid << "): Job id " << job.id << " completed"
-            << endl;
+             << endl;
     }
-
-    // pthread_exit(0);
 }

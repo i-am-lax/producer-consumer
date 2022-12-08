@@ -1,5 +1,7 @@
 #include "helper.h"
 
+extern int errno;
+
 /* Check if a given command-line input ('buffer') is an integer and if so,
  * return it. */
 int check_arg(char *buffer) {
@@ -15,25 +17,42 @@ int check_arg(char *buffer) {
     return num;
 }
 
-/* Wrapper around sem_init (with only inputs 'name' and 'value') to create named
- * semaphore and exit incase of failure. */
+/* Wrapper around sem_init() to create an unnamed semaphore with an initial
+ * integer value ('value') and store the address in 'sem'. Return true if
+ * successful otherwise output an error message and return false. */
 bool create_semaphore(sem_t *sem, unsigned int value) {
-    cout << "creating sem!!!!" << endl;
-    errno = 0;
     int rc = sem_init(sem, 1, value);
     if (rc == -1) {
         cerr << "[Error] sem_open() failed to create named semaphore '"
              << "' with errno: " << errno << endl;
-        exit(1);
+        return false;
     }
     return true;
 }
 
-/* Wrapper around sem_destroy to destroy a semaphore pointed to by 'sem'. If
-this is unsuccessful an error message is printed. */
-void destroy_semaphore(sem_t *sem) {
-    errno = 0;
+/* Wrapper around sem_destroy() to destroy a semaphore at the address pointed to
+ * by 'sem'. Return true if successful otherwise output an error message and
+ * return false. */
+bool destroy_semaphore(sem_t *sem) {
     if (sem_destroy(sem) == -1) {
         cerr << "[Error] sem_close() failed with errno: " << errno << endl;
+        return false;
     }
+    return true;
+}
+
+/* Iteratively join threads based on IDs in 'threads' array of size 'nthreads'.
+ * Return true if successful otherwise output an error message and return false.
+ */
+bool join_threads(pthread_t *threads, int &nthreads) {
+    for (int t = 0; t < nthreads; t++) {
+        int ret = pthread_join(threads[t], NULL);
+        if (ret) {
+            cerr
+                << "[Error] pthread_join() for thread failed with return code: "
+                << ret << endl;
+            return false;
+        }
+    }
+    return true;
 }
