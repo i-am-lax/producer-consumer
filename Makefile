@@ -5,8 +5,8 @@ all: main
 main: helper.o main.o
 	$(CC) -pthread -o main helper.o main.o
 
-main.o: helper.cc main.cc
-	$(CC) -c helper.cc main.cc
+main.o: helper.cpp main.cpp
+	$(CC) -c helper.cpp main.cpp
 
 tidy:
 	rm -f *.o core

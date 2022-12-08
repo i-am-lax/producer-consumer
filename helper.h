@@ -1,37 +1,54 @@
 /******************************************************************
  * Header file for the helper functions. This file includes the
- * required header files, as well as the function signatures and
- * the semaphore values (which are to be changed as needed).
+ * required header files, function signatures and custom data
+ * structures.
  ******************************************************************/
 
+#include "semaphore.h"
+#include <boost/circular_buffer.hpp>
+#include <errno.h>
+#include <iostream>
+#include <math.h>
+#include <pthread.h>
+#include <string.h>
 
-# include <stdio.h>
-# include <stdlib.h>
-# include <unistd.h>
-# include <sys/types.h>
-# include <sys/ipc.h>
-# include <sys/shm.h>
-# include <sys/sem.h>
-# include <sys/time.h>
-# include <math.h>
-# include <errno.h>
-# include <string.h>
-# include <pthread.h>
-# include <ctype.h>
-# include <iostream>
 using namespace std;
 
-# define SEM_KEY 0x50 // Change this number as needed
-
-union semun {
-    int val;               /* used for SETVAL only */
-    struct semid_ds *buf;  /* used for IPC_STAT and IPC_SET */
-    ushort *array;         /* used for GETALL and SETALL */
+/* Job data structure. Producer creates a job in a queue which is then processed
+by a consumer. Job is made up of -
+- id (the location that it occupies in the queue)
+- duration (the time taken to process the job in seconds) */
+struct Job {
+    int id;
+    int duration;
 };
 
-int check_arg (char *);
-int sem_create (key_t, int);
-int sem_init (int, int, int);
-void sem_wait (int, short unsigned int);
-void sem_signal (int, short unsigned int);
-int sem_close (int);
+/* Buffer data structure consists of:
+ * queue -> circular buffer with slots 'qsize' and of type 'Job'
+ * njobs -> number of jobs per producer
+ * free -> represents free space in queue
+ * occupied -> represents presence of jobs in queue
+ * mutex -> ensures mutual exclusivity between producers and consumers */
+struct Buffer {
+    boost::circular_buffer<Job> queue;
+    sem_t *free;
+    sem_t *occupied;
+    sem_t *mutex;
+    int njobs;
+};
+
+/* Check if the characters in a given command-line input ('buffer') can be
+ * represented as an integer. If so, then return it. */
+int check_arg(char *buffer);
+
+/* Create an unnamed semaphore with an initial integer value ('value') and store
+ * the address in 'sem'. Return true if successful. */
+bool create_semaphore(sem_t *sem, unsigned int value);
+
+/* Destroy an unnamed semaphore at the address pointed to by 'sem'.  Return true
+ * if successful. */
+bool destroy_semaphore(sem_t *sem);
+
+/* Iteratively join threads based on IDs in 'threads' array of size 'nthreads'.
+ * Return true if successful. */
+bool join_threads(pthread_t *threads, int &nthreads);
