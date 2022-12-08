@@ -56,7 +56,6 @@ int main(int argc, char **argv) {
      * mutex -> semaphore (initial value 1) to represent mutual exclusivity */
     b.queue = boost::circular_buffer<Job>(qsize);
     b.njobs = njobs;
-
     // create semaphores and assign to pointers in b
     create_semaphore(&free, qsize);
     create_semaphore(&occupied, 0);
@@ -123,9 +122,11 @@ int main(int argc, char **argv) {
  * reached upon which thread terminated
  * - Otherwise thread terminated when all jobs produced */
 void *producer(void *id) {
-
     // producer ID
     int *pid = (int *) id;
+
+    // declare job
+    Job job;
 
     // given producer creates up to maximum of 'njobs'
     for (int j = 0; j < b.njobs; j++) {
@@ -133,13 +134,12 @@ void *producer(void *id) {
         // create job every 1 - 5 seconds
         sleep(rand() % 5 + 1);
 
-        // TODO: do not print or anything during lock phase
-
         /* initiate locks -
         - adding a job would decrement free slots available in queue
         - mutex decremented so only one producer or consumer at a time */
         struct timespec ts;
         ts.tv_sec = time(NULL) + timeout;
+
         if (sem_timedwait(b.free, &ts) == -1) {
             cout << "Producer(" << *pid << "): Timeout after 20 seconds"
                  << endl;
@@ -148,16 +148,17 @@ void *producer(void *id) {
         sem_wait(b.mutex);
 
         // create job and add to the queue
-        Job job = {b.queue.size(), rand() % 10 + 1};
+        job = {b.queue.size(), rand() % 10 + 1};
         b.queue.push_back(job);
-        cout << "Producer(" << *pid << "): Job id " << job.id << " duration "
-             << job.duration << endl;
 
         /* release locks -
-        - mutex incremented so producer or consumer can execute
+        - mutex incremented so producer / consumer can execute
         - occupied incremented to signal consumer to process job */
         sem_post(b.mutex);
         sem_post(b.occupied);
+
+        cout << "Producer(" << *pid << "): Job id " << job.id << " duration "
+             << job.duration << endl;
     }
     cout << "Producer(" << *pid << "): No more jobs to generate." << endl;
 
@@ -173,12 +174,17 @@ void *consumer(void *id) {
     // consumer ID
     int *cid = (int *) id;
 
-    // TODO: do not print or anything during lock phase
+    // declare job
+    Job job;
+
     while (true) {
 
-        /* initiate locks - */
         struct timespec ts;
         ts.tv_sec = time(NULL) + timeout;
+
+        /* initiate locks -
+        - consuming a job would decrement number of jobs occupying queue
+        - mutex decremented so only one producer / consumer at a time */
         if (sem_timedwait(b.occupied, &ts) == -1) {
             cout << "Consumer(" << *cid << "): No more jobs left." << endl;
             pthread_exit(0);
@@ -186,14 +192,17 @@ void *consumer(void *id) {
         sem_wait(b.mutex);
 
         // take job from front of queue
-        Job job = b.queue[0];
+        job = b.queue[0];
         b.queue.pop_front();
-        cout << "Consumer(" << *cid << "): Job id " << job.id
-             << " executing sleep duration " << job.duration << endl;
 
-        /* release locks - */
+        /* release locks -
+        - mutex incremented so producer / consumer can execute
+        - free slots available incremented as job has been removed from queue */
         sem_post(b.mutex);
         sem_post(b.free);
+
+        cout << "Consumer(" << *cid << "): Job id " << job.id
+             << " executing sleep duration " << job.duration << endl;
 
         // process job
         sleep(job.duration);
