@@ -69,9 +69,9 @@ int main(int argc, char **argv) {
     create_semaphore(occupied, 0);
     create_semaphore(mutex, 1);
 
-    b.free = free;
-    b.occupied = occupied;
-    b.mutex = mutex;
+    b.free = &free;
+    b.occupied = &occupied;
+    b.mutex = &mutex;
 
     // /* Initisalise arrays:
     //  * pids -> producer IDs
