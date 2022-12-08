@@ -30,11 +30,15 @@ bool join_threads(pthread_t *threads, int &nthreads);
 
 // Global Buffer variable to be shared across threads
 Buffer b;
+int timeout = 20;
+
+struct timespec ts;
+ts.tv_sec = time(NULL) + timeout;
 
 int main(int argc, char **argv) {
 
     // Ensure that 4 input arguments supplied else output error and exit
-    if (argc > 5) {
+    if (argc != 5) {
         cerr << "[Error] Supply 4 arguments: queue size, number of jobs per "
                 "producer, number of producers, number of consumers"
              << endl;
@@ -132,11 +136,17 @@ void *producer(void *id) {
         // create job every 1 - 5 seconds
         sleep(rand() % 5 + 1);
 
-        // /* initiate locks -
-        // - adding a job would decrement free slots available in queue
-        // - mutex decremented so only one producer or consumer at a time */
-        // sem_wait(b.free);
-        // sem_wait(b.mutex);
+        // TODO: do not print or anything during lock phase
+
+        /* initiate locks -
+        - adding a job would decrement free slots available in queue
+        - mutex decremented so only one producer or consumer at a time */
+        if (sem_timedwait(b.free, ts) == -1) {
+            cout << "Producer(" << *pid << "): Timeout after 20 seconds"
+                 << endl;
+            pthread_exit(0);
+        }
+        sem_wait(b.mutex);
 
         // create job and add to the queue
         Job job = {b.queue.size(), rand() % 10 + 1};
@@ -144,11 +154,11 @@ void *producer(void *id) {
         cout << "Producer(" << *pid << "): Job id " << job.id << " duration "
              << job.duration << endl;
 
-        // /* release locks -
-        // - mutex incremented so producer or consumer can execute
-        // - occupied incremented to signal consumer to process job */
-        // sem_post(b.mutex);
-        // sem_post(b.occupied);
+        /* release locks -
+        - mutex incremented so producer or consumer can execute
+        - occupied incremented to signal consumer to process job */
+        sem_post(b.mutex);
+        sem_post(b.occupied);
     }
 
     pthread_exit(0);
@@ -159,27 +169,29 @@ void *consumer(void *id) {
     // consumer ID
     int *cid = (int *) id;
 
-    cout << "Consumer!!" << endl;
+    // TODO: do not print or anything during lock phase
 
-    // /* initiate locks - */
-    // sem_wait(b.occupied);
-    // sem_wait(b.mutex);
+    /* initiate locks - */
+    if (sem_timedwait(b.occupied, ts) == -1) {
+        cout << "Consumer(" << *cid << "): Timeout after 20 seconds" << endl;
+        pthread_exit(0);
+    }
+    sem_wait(b.mutex);
 
-    // // take job from front of queue
-    // Job job = b.queue[0];
-    // b.queue.pop_front();
-    // cout << "Consumer(" << *cid << "): Job id " << job.id << " executing
-    // sleep duration "
-    //       << job.duration << endl;
+    // take job from front of queue
+    Job job = b.queue[0];
+    b.queue.pop_front();
+    cout << "Consumer(" << *cid << "): Job id " << job.id
+         << " executing sleep duration " << job.duration << endl;
 
-    // /* release locks - */
-    // sem_post(b.mutex);
-    // sem_post(b.free);
+    /* release locks - */
+    sem_post(b.mutex);
+    sem_post(b.free);
 
-    // // process job
-    // sleep(job.duration);
-    // cout << "Consumer(" << *cid << "): Job id " << job.id << " completed" <<
-    // endl;
+    // process job
+    sleep(job.duration);
+    cout << "Consumer(" << *cid << "): Job id " << job.id << " completed"
+         << endl;
 
     pthread_exit(0);
 }
