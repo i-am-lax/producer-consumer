@@ -170,6 +170,7 @@ void *producer(void *id) {
         sem_post(b.mutex);
         sem_post(b.occupied);
     }
+    cout << "Producer(" << *pid << "): No more jobs to generate." << endl;
 
     pthread_exit(0);
 }
@@ -186,7 +187,7 @@ void *consumer(void *id) {
         struct timespec ts;
         ts.tv_sec = time(NULL) + timeout;
         if (sem_timedwait(b.occupied, &ts) == -1) {
-            cout << "Consumer(" << *cid << "): Timeout after 20 seconds" << endl;
+            cout << "Consumer(" << *cid << "): No more jobs left." << endl;
             pthread_exit(0);
         }
         sem_wait(b.mutex);
