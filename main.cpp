@@ -6,34 +6,27 @@
  - number of producers
  - number of consumers
  Example execution: ./main 5 6 2 3
-
- Please note that MacOS doesn’t support unnamed semaphores
- (sem_init() and sem_destroy()), only named semaphores
- (sem_open()) and sem_close()).
  ******************************************************************/
 
 #include "helper.h"
 
 using namespace std;
 
-/* Producer function takes in a unique 'id' to represent the producer. The
+// Global Buffer variable to be shared across threads
+Buffer b;
+
+/* Global timeout constant to represent max wait time for both producers and
+ * consumers before terminating thread */
+const int timeout = 20;
+
+/* Producer routine takes in a unique 'id' to represent the producer. The
  * producer creates a maximum of n jobs every 1 to 5 seconds and adds them to a
  * circular queue. */
 void *producer(void *id);
 
-/* Consumer function takes in a unique 'id' to represent the consumer. The
+/* Consumer routine takes in a unique 'id' to represent the consumer. The
  * consumer takes jobs from the front of the queue and processes them. */
 void *consumer(void *id);
-
-/* Join threads given by IDs in 'threads' array with size 'nthreads' */
-bool join_threads(pthread_t *threads, int &nthreads);
-
-// Global Buffer variable to be shared across threads
-Buffer b;
-int timeout = 20;
-
-struct timespec ts;
-ts.tv_sec = time(NULL) + timeout;
 
 int main(int argc, char **argv) {
 
@@ -60,9 +53,14 @@ int main(int argc, char **argv) {
      * mutex -> semaphore (initial value 1) to represent mutual exclusivity */
     b.queue = boost::circular_buffer<Job>(qsize);
     b.njobs = njobs;
-    b.free = create_semaphore("/free", qsize);
-    b.occupied = create_semaphore("/occupied", 0);
-    b.mutex = create_semaphore("/mutex", 1);
+    sem_t free, occupied, mutex;
+    create_semaphore(&free, qsize);
+    create_semaphore(&occupied, 0);
+    create_semaphore(&mutex, 1);
+
+    b.free = &free;
+    b.occupied = &occupied;
+    b.mutex = &mutex;
 
     /* Initisalise arrays:
      * pids -> producer IDs
@@ -103,28 +101,24 @@ int main(int argc, char **argv) {
     join_threads(pthreads, nproducers);
     join_threads(cthreads, nconsumers);
 
-    // close named semaphores
-    cout << "close sempahores!" << endl;
-    close_semaphore(b.free);
-    close_semaphore(b.occupied);
-    close_semaphore(b.mutex);
+    // Destroy semaphores
+    destroy_semaphore(b.free);
+    destroy_semaphore(b.occupied);
+    destroy_semaphore(b.mutex);
 
     return 0;
 }
 
-bool join_threads(pthread_t *threads, int &nthreads) {
-    for (int t = 0; t < nthreads; t++) {
-        int ret = pthread_join(threads[t], NULL);
-        if (ret) {
-            cerr
-                << "[Error] pthread_join() for thread failed with return code: "
-                << ret << endl;
-        }
-    }
-    return true;
-}
-
-// TODO: add 20s timeout
+/* Routine for each producer thread:
+ * - Producer identified with unique 'id'
+ * - Create a job every 1 - 5 seconds (up to a maximum number of jobs based on
+ * user input) and add to the circular queue
+ * -  Duration for each job is between 1 – 10 seconds
+ * - If a job is taken by the consumer, then another job can be produced which
+ * has the same id
+ * - If queue is full, block while waiting for an empty slot until timeout
+ * reached upon which thread terminated
+ * - Otherwise thread terminated when all jobs produced */
 void *producer(void *id) {
 
     // producer ID
@@ -141,7 +135,9 @@ void *producer(void *id) {
         /* initiate locks -
         - adding a job would decrement free slots available in queue
         - mutex decremented so only one producer or consumer at a time */
-        if (sem_timedwait(b.free, ts) == -1) {
+        struct timespec ts;
+        ts.tv_sec = time(NULL) + timeout;
+        if (sem_timedwait(b.free, &ts) == -1) {
             cout << "Producer(" << *pid << "): Timeout after 20 seconds"
                  << endl;
             pthread_exit(0);
@@ -160,38 +156,45 @@ void *producer(void *id) {
         sem_post(b.mutex);
         sem_post(b.occupied);
     }
+    cout << "Producer(" << *pid << "): No more jobs to generate." << endl;
 
     pthread_exit(0);
 }
 
-// TODO: add while loop and 20s timeout
+/* Routine for each consumer thread:
+ * - Consumer identified with unique 'id'
+ * - Take a job from the circular queue and sleep for the specified duration
+ * - If there are no jobs in the queue, wait until timeout reached upon
+ * which thread is terminated. */
 void *consumer(void *id) {
     // consumer ID
     int *cid = (int *) id;
 
     // TODO: do not print or anything during lock phase
+    while (true) {
 
-    /* initiate locks - */
-    if (sem_timedwait(b.occupied, ts) == -1) {
-        cout << "Consumer(" << *cid << "): Timeout after 20 seconds" << endl;
-        pthread_exit(0);
+        /* initiate locks - */
+        struct timespec ts;
+        ts.tv_sec = time(NULL) + timeout;
+        if (sem_timedwait(b.occupied, &ts) == -1) {
+            cout << "Consumer(" << *cid << "): No more jobs left." << endl;
+            pthread_exit(0);
+        }
+        sem_wait(b.mutex);
+
+        // take job from front of queue
+        Job job = b.queue[0];
+        b.queue.pop_front();
+        cout << "Consumer(" << *cid << "): Job id " << job.id
+             << " executing sleep duration " << job.duration << endl;
+
+        /* release locks - */
+        sem_post(b.mutex);
+        sem_post(b.free);
+
+        // process job
+        sleep(job.duration);
+        cout << "Consumer(" << *cid << "): Job id " << job.id << " completed"
+             << endl;
     }
-    sem_wait(b.mutex);
-
-    // take job from front of queue
-    Job job = b.queue[0];
-    b.queue.pop_front();
-    cout << "Consumer(" << *cid << "): Job id " << job.id
-         << " executing sleep duration " << job.duration << endl;
-
-    /* release locks - */
-    sem_post(b.mutex);
-    sem_post(b.free);
-
-    // process job
-    sleep(job.duration);
-    cout << "Consumer(" << *cid << "): Job id " << job.id << " completed"
-         << endl;
-
-    pthread_exit(0);
 }

@@ -4,22 +4,13 @@
  * structures.
  ******************************************************************/
 
-// # include <stdio.h>
-// # include <stdlib.h>
-// # include <unistd.h>
-// # include <sys/types.h>
-// # include <sys/ipc.h>
-// # include <sys/shm.h>
-// # include <sys/sem.h>
-// # include <sys/time.h>
+#include "semaphore.h"
+#include <boost/circular_buffer.hpp>
 #include <errno.h>
+#include <iostream>
 #include <math.h>
 #include <pthread.h>
 #include <string.h>
-// # include <ctype.h>
-#include "semaphore.h"
-#include <boost/circular_buffer.hpp>
-#include <iostream>
 
 using namespace std;
 
@@ -46,12 +37,18 @@ struct Buffer {
     int njobs;
 };
 
-// Check if a command-line input is an integer and return it
-int check_arg(char *);
+/* Check if the characters in a given command-line input ('buffer') can be
+ * represented as an integer. If so, then return it. */
+int check_arg(char *buffer);
 
-/* Create a named sempahore ('name') with an initial integer value ('value').
- * Return a pointer to the semaphore. */
-sem_t *create_semaphore(const char *name, unsigned int value);
+/* Create an unnamed semaphore with an initial integer value ('value') and store
+ * the address in 'sem'. Return true if successful. */
+bool create_semaphore(sem_t *sem, unsigned int value);
 
-// Close a named sempahore pointed to by 'sem'
-void close_semaphore(sem_t *sem);
+/* Destroy an unnamed semaphore at the address pointed to by 'sem'.  Return true
+ * if successful. */
+bool destroy_semaphore(sem_t *sem);
+
+/* Iteratively join threads based on IDs in 'threads' array of size 'nthreads'.
+ * Return true if successful. */
+bool join_threads(pthread_t *threads, int &nthreads);
