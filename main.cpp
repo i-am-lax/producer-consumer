@@ -74,7 +74,7 @@ int main(int argc, char **argv) {
      * 'producer' on each. Store the thread ID in 'pthreads' and producer ID in
      * 'pids'. Incase of failure, output an error message with code. */
     for (int n = 0; n < nproducers; n++) {
-        pids[n] = n;
+        pids[n] = n + 1;
         int rc =
             pthread_create(&pthreads[n], NULL, producer, (void *) &pids[n]);
         if (rc) {
@@ -87,7 +87,7 @@ int main(int argc, char **argv) {
     /* Create consumer threads based on 'nconsumers' in the same manner as for
      * producers. */
     for (int n = 0; n < nconsumers; n++) {
-        cids[n] = n;
+        cids[n] = n + 1;
         int rc =
             pthread_create(&cthreads[n], NULL, consumer, (void *) &cids[n]);
         if (rc) {
