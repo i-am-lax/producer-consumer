@@ -151,7 +151,7 @@ void *producer(void *id) {
         - mutex decremented so only one producer or consumer at a time */
         struct timespec ts;
         ts.tv_sec = time(NULL) + timeout;
-        if (sem_timedwait(b.free, ts) == -1) {
+        if (sem_timedwait(b.free, &ts) == -1) {
             cout << "Producer(" << *pid << "): Timeout after 20 seconds"
                  << endl;
             pthread_exit(0);
@@ -184,7 +184,7 @@ void *consumer(void *id) {
     /* initiate locks - */
     struct timespec ts;
     ts.tv_sec = time(NULL) + timeout;
-    if (sem_timedwait(b.occupied, ts) == -1) {
+    if (sem_timedwait(b.occupied, &ts) == -1) {
         cout << "Consumer(" << *cid << "): Timeout after 20 seconds" << endl;
         pthread_exit(0);
     }
