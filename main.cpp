@@ -12,8 +12,11 @@
 
 using namespace std;
 
-// Global Buffer variable to be shared across threads
+// Global Buffer to be shared across threads
 Buffer b;
+
+// Declare semaphores
+sem_t free, occupied, mutex;
 
 /* Global timeout constant to represent max wait time for both producers and
  * consumers before terminating thread */
@@ -53,16 +56,16 @@ int main(int argc, char **argv) {
      * mutex -> semaphore (initial value 1) to represent mutual exclusivity */
     b.queue = boost::circular_buffer<Job>(qsize);
     b.njobs = njobs;
-    sem_t free, occupied, mutex;
+
+    // create semaphores and assign to pointers in b
     create_semaphore(&free, qsize);
     create_semaphore(&occupied, 0);
     create_semaphore(&mutex, 1);
-
     b.free = &free;
     b.occupied = &occupied;
     b.mutex = &mutex;
 
-    /* Initisalise arrays:
+    /* Declare arrays:
      * pids -> producer IDs
      * cids -> consumer IDs
      * pthreads -> thread IDs for producers
@@ -75,11 +78,11 @@ int main(int argc, char **argv) {
      * 'pids'. Incase of failure, output an error message with code. */
     for (int n = 0; n < nproducers; n++) {
         pids[n] = n;
-        int ret =
+        int rc =
             pthread_create(&pthreads[n], NULL, producer, (void *) &pids[n]);
-        if (ret) {
+        if (rc) {
             cerr << "[Error] pthread_create() for Producer(" << n
-                 << ") failed with return code: " << ret << endl;
+                 << ") failed with return code: " << rc << endl;
             exit(1);
         }
     }
@@ -88,11 +91,11 @@ int main(int argc, char **argv) {
      * producers. */
     for (int n = 0; n < nconsumers; n++) {
         cids[n] = n;
-        int ret =
+        int rc =
             pthread_create(&cthreads[n], NULL, consumer, (void *) &cids[n]);
-        if (ret) {
+        if (rc) {
             cerr << "[Error] pthread_create() for Consumer(" << n
-                 << ") failed with return code: " << ret << endl;
+                 << ") failed with return code: " << rc << endl;
             exit(1);
         }
     }
