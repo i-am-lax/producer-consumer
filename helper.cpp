@@ -18,6 +18,7 @@ int check_arg(char *buffer) {
 /* Wrapper around sem_init (with only inputs 'name' and 'value') to create named
  * semaphore and exit incase of failure. */
 bool create_semaphore(sem_t *sem, unsigned int value) {
+    cout << "creating sem!!!!" << endl;
     errno = 0;
     int rc = sem_init(sem, 1, value);
     if (rc == -1) {

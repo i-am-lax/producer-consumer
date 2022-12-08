@@ -64,10 +64,10 @@ int main(int argc, char **argv) {
     b.queue = boost::circular_buffer<Job>(qsize);
     b.njobs = njobs;
     cout << "Initialised queue and njobs" << endl;
-    sem_t * free, occupied, mutex;
-    create_semaphore(free, qsize);
-    create_semaphore(occupied, 0);
-    create_semaphore(mutex, 1);
+    sem_t free, occupied, mutex;
+    create_semaphore(&free, qsize);
+    create_semaphore(&occupied, 0);
+    create_semaphore(&mutex, 1);
 
     b.free = &free;
     b.occupied = &occupied;
