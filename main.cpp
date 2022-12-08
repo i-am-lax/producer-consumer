@@ -73,27 +73,27 @@ int main(int argc, char **argv) {
     b.occupied = &occupied;
     b.mutex = &mutex;
 
-    // /* Initisalise arrays:
-    //  * pids -> producer IDs
-    //  * cids -> consumer IDs
-    //  * pthreads -> thread IDs for producers
-    //  * cthreads -> thread IDs for consumers */
-    // pthread_t pthreads[nproducers], cthreads[nconsumers];
-    // int pids[nproducers], cids[nconsumers];
+    /* Initisalise arrays:
+     * pids -> producer IDs
+     * cids -> consumer IDs
+     * pthreads -> thread IDs for producers
+     * cthreads -> thread IDs for consumers */
+    pthread_t pthreads[nproducers], cthreads[nconsumers];
+    int pids[nproducers], cids[nconsumers];
 
-    // /* Iteratively create producer threads based on 'nproducers' and execute
-    //  * 'producer' on each. Store the thread ID in 'pthreads' and producer ID in
-    //  * 'pids'. Incase of failure, output an error message with code. */
-    // for (int n = 0; n < nproducers; n++) {
-    //     pids[n] = n;
-    //     int ret =
-    //         pthread_create(&pthreads[n], NULL, producer, (void *) &pids[n]);
-    //     if (ret) {
-    //         cerr << "[Error] pthread_create() for Producer(" << n
-    //              << ") failed with return code: " << ret << endl;
-    //         exit(1);
-    //     }
-    // }
+    /* Iteratively create producer threads based on 'nproducers' and execute
+     * 'producer' on each. Store the thread ID in 'pthreads' and producer ID in
+     * 'pids'. Incase of failure, output an error message with code. */
+    for (int n = 0; n < nproducers; n++) {
+        pids[n] = n;
+        int ret =
+            pthread_create(&pthreads[n], NULL, producer, (void *) &pids[n]);
+        if (ret) {
+            cerr << "[Error] pthread_create() for Producer(" << n
+                 << ") failed with return code: " << ret << endl;
+            exit(1);
+        }
+    }
 
     // /* Create consumer threads based on 'nconsumers' in the same manner as for
     //  * producers. */
@@ -108,8 +108,8 @@ int main(int argc, char **argv) {
     //     }
     // }
 
-    // // Join producer and consumer threads so we wait for them to finish
-    // join_threads(pthreads, nproducers);
+    // Join producer and consumer threads so we wait for them to finish
+    join_threads(pthreads, nproducers);
     // join_threads(cthreads, nconsumers);
 
     // close named semaphores
@@ -133,45 +133,44 @@ bool join_threads(pthread_t *threads, int &nthreads) {
     return true;
 }
 
-// // TODO: add 20s timeout
-// void *producer(void *id) {
+void *producer(void *id) {
 
-//     // producer ID
-//     int *pid = (int *) id;
+    // producer ID
+    int *pid = (int *) id;
 
-//     // given producer creates up to maximum of 'njobs'
-//     for (int j = 0; j < b.njobs; j++) {
+    // given producer creates up to maximum of 'njobs'
+    for (int j = 0; j < b.njobs; j++) {
 
-//         // create job every 1 - 5 seconds
-//         sleep(rand() % 5 + 1);
+        // create job every 1 - 5 seconds
+        sleep(rand() % 5 + 1);
 
-//         // TODO: do not print or anything during lock phase
+        // TODO: do not print or anything during lock phase
 
-//         /* initiate locks -
-//         - adding a job would decrement free slots available in queue
-//         - mutex decremented so only one producer or consumer at a time */
-//         if (sem_timedwait(b.free, ts) == -1) {
-//             cout << "Producer(" << *pid << "): Timeout after 20 seconds"
-//                  << endl;
-//             pthread_exit(0);
-//         }
-//         sem_wait(b.mutex);
+        /* initiate locks -
+        - adding a job would decrement free slots available in queue
+        - mutex decremented so only one producer or consumer at a time */
+        // if (sem_timedwait(b.free, ts) == -1) {
+        //     cout << "Producer(" << *pid << "): Timeout after 20 seconds"
+        //          << endl;
+        //     pthread_exit(0);
+        // }
+        // sem_wait(b.mutex);
 
-//         // create job and add to the queue
-//         Job job = {b.queue.size(), rand() % 10 + 1};
-//         b.queue.push_back(job);
-//         cout << "Producer(" << *pid << "): Job id " << job.id << " duration "
-//              << job.duration << endl;
+        // create job and add to the queue
+        Job job = {b.queue.size(), rand() % 10 + 1};
+        b.queue.push_back(job);
+        cout << "Producer(" << *pid << "): Job id " << job.id << " duration "
+             << job.duration << endl;
 
-//         /* release locks -
-//         - mutex incremented so producer or consumer can execute
-//         - occupied incremented to signal consumer to process job */
-//         sem_post(b.mutex);
-//         sem_post(b.occupied);
-//     }
+        /* release locks -
+        - mutex incremented so producer or consumer can execute
+        - occupied incremented to signal consumer to process job */
+        // sem_post(b.mutex);
+        // sem_post(b.occupied);
+    }
 
-//     pthread_exit(0);
-// }
+    pthread_exit(0);
+}
 
 // // TODO: add while loop and 20s timeout
 // void *consumer(void *id) {
