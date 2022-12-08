@@ -20,7 +20,7 @@ int check_arg(char *buffer) {
 /* Wrapper around sem_init() to create an unnamed semaphore with an initial
  * integer value ('value') and store the address in 'sem'. Return true if
  * successful otherwise output an error message and return false. */
-create_semaphore(sem_t *sem, unsigned int value) {
+bool create_semaphore(sem_t *sem, unsigned int value) {
     int rc = sem_init(sem, 0, value);
     if (rc == -1) {
         cerr << "[Error] sem_open() failed to create named semaphore '"
