@@ -15,9 +15,6 @@ using namespace std;
 // Global Buffer to be shared across threads
 Buffer b;
 
-// Declare semaphores
-sem_t free, occupied, mutex;
-
 /* Global timeout constant to represent max wait time for both producers and
  * consumers before terminating thread */
 const int timeout = 20;
@@ -57,6 +54,7 @@ int main(int argc, char **argv) {
     b.queue = boost::circular_buffer<Job>(qsize);
     b.njobs = njobs;
     // create semaphores and assign to pointers in b
+    sem_t free, occupied, mutex;
     create_semaphore(&free, qsize);
     create_semaphore(&occupied, 0);
     create_semaphore(&mutex, 1);
