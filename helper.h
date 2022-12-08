@@ -54,4 +54,4 @@ bool semaphore_destroy(sem_t *sem);
 
 /* Iteratively join threads based on IDs in 'threads' array of size 'nthreads'.
  * Return true if successful. */
-bool join_threads(pthread_t *threads, int &nthreads);
+bool join_threads(pthread_t *threads, const int &nthreads);

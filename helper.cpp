@@ -41,7 +41,7 @@ bool semaphore_destroy(sem_t *sem) {
 
 /* Iteratively join threads based on IDs in 'threads' array of size 'nthreads'.
  * Return true if successful otherwise output error message and return false. */
-bool join_threads(pthread_t *threads, int &nthreads) {
+bool join_threads(pthread_t *threads, const int &nthreads) {
     for (int t = 0; t < nthreads; t++) {
         int rc = pthread_join(threads[t], NULL);
         // error code itself is returned, not stashed in errno
