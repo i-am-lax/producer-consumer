@@ -64,9 +64,14 @@ int main(int argc, char **argv) {
     b.queue = boost::circular_buffer<Job>(qsize);
     b.njobs = njobs;
     cout << "Initialised queue and njobs" << endl;
-    create_semaphore(b.free, qsize);
-    create_semaphore(b.occupied, 0);
-    create_semaphore(b.mutex, 1);
+    sem_t * free, occupied, mutex;
+    create_semaphore(free, qsize);
+    create_semaphore(occupied, 0);
+    create_semaphore(mutex, 1);
+
+    b.free = free;
+    b.occupied = occupied;
+    b.mutex = mutex;
 
     // /* Initisalise arrays:
     //  * pids -> producer IDs
