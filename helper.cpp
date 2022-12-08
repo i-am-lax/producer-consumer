@@ -20,8 +20,8 @@ int check_arg(char *buffer) {
 bool create_semaphore(sem_t *sem, unsigned int value) {
     errno = 0;
     int rc = sem_init(sem, 1, value);
-    if (s == -1) {
-        cerr << "[Error] sem_open() failed to create named semaphore '" << name
+    if (rc == -1) {
+        cerr << "[Error] sem_open() failed to create named semaphore '"
              << "' with errno: " << errno << endl;
         exit(1);
     }
