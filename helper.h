@@ -32,12 +32,12 @@ struct Job {
     int duration;
 };
 
-/* Buffer data structure. Buffer comprises of the circular queue, total jobs per
-producer, and pointers to semaphores to be passed to the producers and
-consumers. Semaphores:
-- free -> represents free space in queue
-- occupied -> represents presence of jobs in queue
-- mutex -> ensures mutual exclusion between producers and consumers */
+/* Buffer data structure consists of:
+ * queue -> circular buffer with slots 'qsize' and of type 'Job'
+ * njobs -> number of jobs per producer
+ * free -> represents free space in queue
+ * occupied -> represents presence of jobs in queue
+ * mutex -> ensures mutual exclusivity between producers and consumers */
 struct Buffer {
     boost::circular_buffer<Job> queue;
     sem_t *free;
@@ -49,13 +49,9 @@ struct Buffer {
 // Check if a command-line input is an integer and return it
 int check_arg(char *);
 
-// Create a named sempahore ('name') with an initial integer value ('value').
-// Return a pointer to the semaphore.
+/* Create a named sempahore ('name') with an initial integer value ('value').
+ * Return a pointer to the semaphore. */
 sem_t *create_semaphore(const char *name, unsigned int value);
 
 // Close a named sempahore pointed to by 'sem'
 void close_semaphore(sem_t *sem);
-
-/* Create 'nthreads' number of threads and execute 'start_routine'. Return a
- * pointer to an array containing the thread IDs. */
-// pthread_t *create_threads(int nthreads, void *(*start_routine)(void *) );

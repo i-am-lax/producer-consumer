@@ -16,60 +16,91 @@
 
 using namespace std;
 
-/* Producer function declaration:
-- ... */
+/* Producer function takes in a unique 'id' to represent the producer. The
+ * producer creates a maximum of n jobs every 1 to 5 seconds and adds them to a
+ * circular queue. */
 void *producer(void *id);
 
-/* Consumer function declaration:
-- ... */
+/* Consumer function takes in a unique 'id' to represent the consumer. The
+ * consumer takes jobs from the front of the queue and processes them. */
 void *consumer(void *id);
 
-// pthread_t *create_threads(int &nthreads, void *(*start_routine)(void *) );
+/* Join threads given by IDs in 'threads' array with size 'nthreads' */
+bool join_threads(pthread_t *threads, int &nthreads);
 
-// global Buffer variable to be shared across threads
+// Global Buffer variable to be shared across threads
 Buffer b;
 
 int main(int argc, char **argv) {
-    // read in command-line arguments
+
+    // Ensure that 4 input arguments supplied else output error and exit
+    if (argc > 5) {
+        cerr << "[Error] Supply 4 arguments: queue size, number of jobs per "
+                "producer, number of producers, number of consumers"
+             << endl;
+        exit(1);
+    }
+
+    // Validate command-line arguments and initialise variables
     int qsize = check_arg(argv[1]);
     int njobs = check_arg(argv[2]);
     int nproducers = check_arg(argv[3]);
     int nconsumers = check_arg(argv[4]);
 
-    // populate global Buffer 'b'
+    /* Populate Buffer data structure 'b' to be shared across threads
+     * queue -> circular buffer with slots 'qsize' and of type 'Job'
+     * njobs -> number of jobs per producer given by 'njobs'
+     * free -> semaphore (initial value 'qsize') for free slots in 'queue'
+     * occupied -> semaphore (initial value 0) for whether or not a job is
+     * available in 'queue'
+     * mutex -> semaphore (initial value 1) to represent mutual exclusivity */
     b.queue = boost::circular_buffer<Job>(qsize);
     b.njobs = njobs;
     b.free = create_semaphore("/free", qsize);
     b.occupied = create_semaphore("/occupied", 0);
     b.mutex = create_semaphore("/mutex", 1);
 
-    // Create producers based on nproducers
-    // pthread_t *pthreads = create_threads(nproducers, producer);
-    // Create consumers based on nconsumers
-    // pthread_t *cthreads = create_threads(nconsumers, consumer);
+    /* Initisalise arrays:
+     * pids -> producer IDs
+     * cids -> consumer IDs
+     * pthreads -> thread IDs for producers
+     * cthreads -> thread IDs for consumers */
+    pthread_t pthreads[nproducers], cthreads[nconsumers];
+    int pids[nproducers], cids[nconsumers];
 
-    pthread_t pthreads[nproducers];
-    for (int p = 0; p < nproducers; p++) {
-        pthread_create(&pthreads[p], NULL, producer, (void *) &p);
+    /* Iteratively create producer threads based on 'nproducers' and execute
+     * 'producer' on each. Store the thread ID in 'pthreads' and producer ID in
+     * 'pids'. Incase of failure, output an error message with code. */
+    for (int n = 0; n < nproducers; n++) {
+        pids[n] = n;
+        int ret =
+            pthread_create(&pthreads[n], NULL, producer, (void *) &pids[n]);
+        if (ret) {
+            cerr << "[Error] pthread_create() for Producer(" << n
+                 << ") failed with return code: " << ret << endl;
+            exit(1);
+        }
     }
 
-    // Join producers
-    for (int p = 0; p < nproducers; p++) {
-        cout << "THREAD CONTENTS: " << pthreads[p] << endl;
-        pthread_join(pthreads[p], NULL);
-        cout << "Joining producer thread: " << p << endl;
-        // TODO: error handlings
+    /* Create consumer threads based on 'nconsumers' in the same manner as for
+     * producers. */
+    for (int n = 0; n < nconsumers; n++) {
+        cids[n] = n;
+        int ret =
+            pthread_create(&cthreads[n], NULL, consumer, (void *) &cids[n]);
+        if (ret) {
+            cerr << "[Error] pthread_create() for Consumer(" << n
+                 << ") failed with return code: " << ret << endl;
+            exit(1);
+        }
     }
 
-    // Join consumers
-    // for (int c = 0; c < nconsumers; c++)
-    // {
-    //   cout << "THREAD CONTENTS: " << cthreads[c] << endl;
-    //   pthread_join(pthreads[c], NULL);
-    //   cout << "Joining consumer thread: " << c << endl;
-    // }
+    // Join producer and consumer threads so we wait for them to finish
+    join_threads(pthreads, nproducers);
+    join_threads(cthreads, nconsumers);
 
     // close named semaphores
+    cout << "close sempahores!" << endl;
     close_semaphore(b.free);
     close_semaphore(b.occupied);
     close_semaphore(b.mutex);
@@ -77,24 +108,17 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-/* Wrapped around pthread_create() to iteratively create 'nthreads' number of
- * threads and execute 'start'. Incase of failure, an error message is
- * printed and we exit. If successful, we return a pointer to an array containing
- * the thread IDs. */
-// pthread_t *create_threads(int &nthreads, void *(*start)(void *) ) {
-//     int ret;
-//     pthread_t threads[nthreads];
-//     for (int n = 0; n < nthreads; n++) {
-//         cout << "Creating thread: " << n << endl;
-//         ret = pthread_create(&threads[n], NULL, start, (void *) &n);
-//         if (ret) {
-//             cerr << "[Error] pthread_create() failed with return code: " << ret
-//                  << endl;
-//             exit(1);
-//         }
-//     }
-//     return threads;
-// }
+bool join_threads(pthread_t *threads, int &nthreads) {
+    for (int t = 0; t < nthreads; t++) {
+        int ret = pthread_join(threads[t], NULL);
+        if (ret) {
+            cerr
+                << "[Error] pthread_join() for thread failed with return code: "
+                << ret << endl;
+        }
+    }
+    return true;
+}
 
 // TODO: add 20s timeout
 void *producer(void *id) {
@@ -102,7 +126,7 @@ void *producer(void *id) {
     // producer ID
     int *pid = (int *) id;
 
-    // given producer creates up maximum of 'njobs'
+    // given producer creates up to maximum of 'njobs'
     for (int j = 0; j < b.njobs; j++) {
 
         // create job every 1 - 5 seconds
