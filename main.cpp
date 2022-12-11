@@ -140,7 +140,7 @@ void *producer(void *id) {
         - mutex decremented so only one producer or consumer at a time */
         if (sem_timedwait(b.free, &b.ts) == -1 && errno == ETIMEDOUT) {
             // exit if blocking time exceeds timeout
-            printf("Producer(%i): Timeout after 20 seconds", *pid);
+            printf("Producer(%i): Timeout after 20 seconds\n", *pid);
             pthread_exit(0);
         }
         if (sem_wait(b.mutex) == -1) {
@@ -164,10 +164,10 @@ void *producer(void *id) {
             pthread_exit(0);
         }
 
-        printf("Producer(%i): Job id %i duration %i", *pid, job.id,
+        printf("Producer(%i): Job id %i duration %i\n", *pid, job.id,
                job.duration);
     }
-    printf("Producer(%i): No more jobs to generate.", *pid);
+    printf("Producer(%i): No more jobs to generate.\n", *pid);
 
     pthread_exit(0);
 }
@@ -191,7 +191,7 @@ void *consumer(void *id) {
         - mutex decremented so only one producer / consumer at a time */
         if (sem_timedwait(b.occupied, &b.ts) == -1 && errno == ETIMEDOUT) {
             // exit if blocking time exceeds timeout
-            printf("Consumer(%i): No more jobs left.", *cid);
+            printf("Consumer(%i): No more jobs left.\n", *cid);
             pthread_exit(0);
         }
         if (sem_wait(b.mutex) == -1) {
@@ -215,11 +215,11 @@ void *consumer(void *id) {
             pthread_exit(0);
         }
 
-        printf("Consumer(%i): Job id %i executing sleep duration %i", *cid,
+        printf("Consumer(%i): Job id %i executing sleep duration %i\n", *cid,
                job.id, job.duration);
 
         // process job
         sleep(job.duration);
-        printf("Consumer(%i): Job id %i completed", *cid, job.id);
+        printf("Consumer(%i): Job id %i completed\n", *cid, job.id);
     }
 }
