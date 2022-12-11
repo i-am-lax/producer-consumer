@@ -47,7 +47,6 @@ int main(int argc, char **argv) {
     /* Populate Buffer data structure 'b' to be shared across threads
      * queue -> circular buffer with slots 'qsize' and of type 'Job'
      * njobs -> number of jobs per producer given by 'njobs'
-     * ts -> store maximum waiting time for producers and consumers
      * free -> semaphore (initial value 'qsize') for free slots in 'queue'
      * occupied -> semaphore (initial value 0) for whether or not a job is
      * available in 'queue'
@@ -55,7 +54,6 @@ int main(int argc, char **argv) {
      * is mutually exclusive */
     b.queue = boost::circular_buffer<Job>(qsize);
     b.njobs = njobs;
-    b.ts.tv_sec = time(NULL) + timeout;
     // create semaphores and assign to pointers in buffer 'b'
     sem_t free, occupied, mutex;
     semaphore_init(&free, qsize);
@@ -126,14 +124,18 @@ void *producer(void *id) {
     // producer ID
     int *pid = (int *) id;
 
-    // declare job
+    // declare job and ts (point in time representing timeout)
     Job job;
+    struct timespec ts;
 
     // given producer creates up to maximum of 'njobs'
     for (int j = 0; j < b.njobs; j++) {
 
         // create job every 1 - 5 seconds
         sleep(rand() % 5 + 1);
+
+        // get current time and add timeout
+        ts.tv_sec = time(NULL) + timeout;
 
         /* initiate locks -
         - adding a job would decrement free slots available in queue
@@ -181,10 +183,14 @@ void *consumer(void *id) {
     // consumer ID
     int *cid = (int *) id;
 
-    // declare job
+    // declare job and ts (point in time representing timeout)
     Job job;
+    struct timespec ts;
 
     while (true) {
+
+        // get current time and add timeout
+        ts.tv_sec = time(NULL) + timeout;
 
         /* initiate locks -
         - consuming a job would decrement number of jobs occupying queue
