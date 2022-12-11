@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
 
     /* Iteratively create producer threads based on 'nproducers' and execute
      * 'producer' on each. Store the thread ID in 'pthreads' and producer ID in
-     * 'pids'. Incase of failure, output an error message with code. */
+     * 'pids'. Incase of failure, output an error message and exit. */
     for (int n = 0; n < nproducers; n++) {
         pids[n] = n + 1;
         int rc =
@@ -112,8 +112,8 @@ int main(int argc, char **argv) {
 
 /* Routine for each producer thread:
  * - Producer identified with unique 'id'
- * - Create a job every 1 - 5 seconds (up to a maximum number of jobs based on
- * user input) and add to the circular queue
+ * - Create a job every 1 - 5 seconds (up to a maximum number of jobs) and add
+ * to the circular queue (id attached based on position in queue)
  * -  Duration for each job is between 1 – 10 seconds
  * - If a job is taken by the consumer, then another job can be produced which
  * has the same id
@@ -128,7 +128,7 @@ void *producer(void *id) {
     Job job;
     struct timespec ts;
 
-    // given producer creates up to maximum of 'njobs'
+    // producer creates up to maximum of 'njobs'
     for (int j = 0; j < b.njobs; j++) {
 
         // create job every 1 - 5 seconds
@@ -177,8 +177,8 @@ void *producer(void *id) {
 /* Routine for each consumer thread:
  * - Consumer identified with unique 'id'
  * - Take a job from the circular queue and sleep for the specified duration
- * - If there are no jobs in the queue, wait until timeout reached upon
- * which thread is terminated. */
+ * - If there are no jobs in the queue, wait until timeout reached and
+ * terminate. */
 void *consumer(void *id) {
     // consumer ID
     int *cid = (int *) id;

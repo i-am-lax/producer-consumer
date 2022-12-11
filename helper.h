@@ -13,8 +13,6 @@
 #include <string.h>
 #include <time.h>
 
-using namespace std;
-
 /* Job data structure. Producer creates a job in a queue which is then processed
 by a consumer. Job is made up of -
 - id (the location that it occupies in the queue)
@@ -24,12 +22,13 @@ struct Job {
     int duration;
 };
 
-/* Buffer data structure consists of:
- * queue -> circular buffer with slots 'qsize' and of type 'Job'
- * njobs -> number of jobs per producer
- * free -> represents free space in queue
- * occupied -> represents presence of jobs in queue
- * mutex -> ensures mutual exclusivity between producers and consumers */
+/* Buffer data structure (to be shared across threads) consists of:
+ * queue -> circular buffer with n slots of type 'Job' (read/write)
+ * free -> pointer to semaphore representing free space in queue
+ * occupied -> pointer to semaphore representing presence of jobs in queue
+ * mutex -> pointer to semaphore ensuring mutual exclusivity between producers /
+ * consumers
+ * njobs -> number of jobs per producer (read-only) */
 struct Buffer {
     boost::circular_buffer<Job> queue;
     sem_t *free;

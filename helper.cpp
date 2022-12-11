@@ -1,5 +1,8 @@
 #include "helper.h"
 
+using namespace std;
+
+// error codes from sem_* functions stashed in errno
 extern int errno;
 
 /* Check if a given command-line input ('buffer') is an integer and if so,
