@@ -45,13 +45,13 @@ struct Buffer {
 int check_arg(char *buffer);
 
 /* Initialise an unnamed semaphore with an integer value ('value') and store
- * the address in 'sem'. Return true if successful. */
-bool semaphore_init(sem_t *sem, unsigned int value);
+ * the address in 'sem'. Exit if unsuccessful. */
+void semaphore_init(sem_t *sem, unsigned int value);
 
-/* Destroy an unnamed semaphore at the address pointed to by 'sem'.  Return true
- * if successful. */
-bool semaphore_destroy(sem_t *sem);
+/* Destroy an unnamed semaphore at the address pointed to by 'sem'. Exit if
+ * unsuccessful. */
+void semaphore_destroy(sem_t *sem);
 
 /* Iteratively join threads based on IDs in 'threads' array of size 'nthreads'.
- * Return true if successful. */
-bool join_threads(pthread_t *threads, const int &nthreads);
+ * Exit if unsuccessful. */
+void join_threads(pthread_t *threads, const int &nthreads);

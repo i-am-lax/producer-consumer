@@ -51,11 +51,12 @@ int main(int argc, char **argv) {
      * free -> semaphore (initial value 'qsize') for free slots in 'queue'
      * occupied -> semaphore (initial value 0) for whether or not a job is
      * available in 'queue'
-     * mutex -> semaphore (initial value 1) to represent mutual exclusivity */
+     * mutex -> semaphore (initial value 1) so that access to the shared queue
+     * is mutually exclusive */
     b.queue = boost::circular_buffer<Job>(qsize);
     b.njobs = njobs;
     b.ts.tv_sec = time(NULL) + timeout;
-    // create semaphores and assign to pointers in b
+    // create semaphores and assign to pointers in buffer 'b'
     sem_t free, occupied, mutex;
     semaphore_init(&free, qsize);
     semaphore_init(&occupied, 0);
@@ -80,8 +81,8 @@ int main(int argc, char **argv) {
         int rc =
             pthread_create(&pthreads[n], NULL, producer, (void *) &pids[n]);
         if (rc) {
-            cerr << "[Error creating thread] pthread_create() for Producer(" << n + 1
-                 << ") failed with error code: " << rc << endl;
+            cerr << "[Error creating thread] pthread_create() for Producer("
+                 << n + 1 << ") failed with error code: " << rc << endl;
             exit(1);
         }
     }
@@ -93,8 +94,8 @@ int main(int argc, char **argv) {
         int rc =
             pthread_create(&cthreads[n], NULL, consumer, (void *) &cids[n]);
         if (rc) {
-            cerr << "[Error creating thread] pthread_create() for Consumer(" << n + 1
-                 << ") failed with error code: " << rc << endl;
+            cerr << "[Error creating thread] pthread_create() for Consumer("
+                 << n + 1 << ") failed with error code: " << rc << endl;
             exit(1);
         }
     }
@@ -137,7 +138,8 @@ void *producer(void *id) {
         /* initiate locks -
         - adding a job would decrement free slots available in queue
         - mutex decremented so only one producer or consumer at a time */
-        if (sem_timedwait(b.free, &b.ts) == -1) {
+        if (sem_timedwait(b.free, &b.ts) == -1 && errno == ETIMEDOUT) {
+            // exit if blocking time exceeds timeout
             cout << "Producer(" << *pid << "): Timeout after 20 seconds"
                  << endl;
             pthread_exit(0);
@@ -179,7 +181,8 @@ void *consumer(void *id) {
         /* initiate locks -
         - consuming a job would decrement number of jobs occupying queue
         - mutex decremented so only one producer / consumer at a time */
-        if (sem_timedwait(b.occupied, &b.ts) == -1) {
+        if (sem_timedwait(b.occupied, &b.ts) == -1 && errno == ETIMEDOUT) {
+            // exit if blocking time exceeds timeout
             cout << "Consumer(" << *cid << "): No more jobs left." << endl;
             pthread_exit(0);
         }

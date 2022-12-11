@@ -18,30 +18,27 @@ int check_arg(char *buffer) {
 }
 
 /* Wrapper around sem_init() to initialise an unnamed semaphore with an
- * integer value ('value') and store the address in 'sem'. Return true if
- * successful otherwise output an error message and return false. */
-bool semaphore_init(sem_t *sem, unsigned int value) {
+ * integer value ('value') and store the address in 'sem'. Output an error
+ * message and exit if unsuccessful. */
+void semaphore_init(sem_t *sem, unsigned int value) {
     if (sem_init(sem, 0, value) == -1) {
         perror("[Error initialising semaphore]");
-        return false;
+        exit(1);
     }
-    return true;
 }
 
 /* Wrapper around sem_destroy() to destroy a semaphore at the address pointed to
- * by 'sem'. Return true if successful otherwise output an error message and
- * return false. */
-bool semaphore_destroy(sem_t *sem) {
+ * by 'sem'. Output an error message and exit if unsuccessful. */
+void semaphore_destroy(sem_t *sem) {
     if (sem_destroy(sem) == -1) {
         perror("[Error destroying semaphore]");
-        return false;
+        exit(1);
     }
-    return true;
 }
 
 /* Iteratively join threads based on IDs in 'threads' array of size 'nthreads'.
- * Return true if successful otherwise output error message and return false. */
-bool join_threads(pthread_t *threads, const int &nthreads) {
+ * Output an error message and exit if unsuccessful. */
+void join_threads(pthread_t *threads, const int &nthreads) {
     for (int t = 0; t < nthreads; t++) {
         int rc = pthread_join(threads[t], NULL);
         // error code itself is returned, not stashed in errno
@@ -49,8 +46,7 @@ bool join_threads(pthread_t *threads, const int &nthreads) {
             cerr << "[Error joining thread] pthread_join() failed with return "
                     "code: "
                  << rc << endl;
-            return false;
+            exit(1);
         }
     }
-    return true;
 }
