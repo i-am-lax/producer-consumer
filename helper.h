@@ -11,8 +11,7 @@
 #include <math.h>
 #include <pthread.h>
 #include <string.h>
-
-using namespace std;
+#include <time.h>
 
 /* Job data structure. Producer creates a job in a queue which is then processed
 by a consumer. Job is made up of -
@@ -23,12 +22,13 @@ struct Job {
     int duration;
 };
 
-/* Buffer data structure consists of:
- * queue -> circular buffer with slots 'qsize' and of type 'Job'
- * njobs -> number of jobs per producer
- * free -> represents free space in queue
- * occupied -> represents presence of jobs in queue
- * mutex -> ensures mutual exclusivity between producers and consumers */
+/* Buffer data structure (to be shared across threads) consists of:
+ * queue -> circular buffer with n slots of type 'Job' (read/write)
+ * free -> pointer to semaphore representing free space in queue
+ * occupied -> pointer to semaphore representing presence of jobs in queue
+ * mutex -> pointer to semaphore ensuring mutual exclusivity between producers /
+ * consumers
+ * njobs -> number of jobs per producer (read-only) */
 struct Buffer {
     boost::circular_buffer<Job> queue;
     sem_t *free;
@@ -41,14 +41,14 @@ struct Buffer {
  * represented as an integer. If so, then return it. */
 int check_arg(char *buffer);
 
-/* Create an unnamed semaphore with an initial integer value ('value') and store
- * the address in 'sem'. Return true if successful. */
-bool create_semaphore(sem_t *sem, unsigned int value);
+/* Initialise an unnamed semaphore with an integer value ('value') and store
+ * the address in 'sem'. Exit if unsuccessful. */
+void semaphore_init(sem_t *sem, unsigned int value);
 
-/* Destroy an unnamed semaphore at the address pointed to by 'sem'.  Return true
- * if successful. */
-bool destroy_semaphore(sem_t *sem);
+/* Destroy an unnamed semaphore at the address pointed to by 'sem'. Exit if
+ * unsuccessful. */
+void semaphore_destroy(sem_t *sem);
 
 /* Iteratively join threads based on IDs in 'threads' array of size 'nthreads'.
- * Return true if successful. */
-bool join_threads(pthread_t *threads, int &nthreads);
+ * Exit if unsuccessful. */
+void join_threads(pthread_t *threads, const int &nthreads);

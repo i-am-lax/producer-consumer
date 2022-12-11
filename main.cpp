@@ -12,7 +12,7 @@
 
 using namespace std;
 
-// Global Buffer variable to be shared across threads
+// Global Buffer to be shared across threads
 Buffer b;
 
 /* Global timeout constant to represent max wait time for both producers and
@@ -50,19 +50,20 @@ int main(int argc, char **argv) {
      * free -> semaphore (initial value 'qsize') for free slots in 'queue'
      * occupied -> semaphore (initial value 0) for whether or not a job is
      * available in 'queue'
-     * mutex -> semaphore (initial value 1) to represent mutual exclusivity */
+     * mutex -> semaphore (initial value 1) so that access to the shared queue
+     * is mutually exclusive */
     b.queue = boost::circular_buffer<Job>(qsize);
     b.njobs = njobs;
+    // create semaphores and assign to pointers in buffer 'b'
     sem_t free, occupied, mutex;
-    create_semaphore(&free, qsize);
-    create_semaphore(&occupied, 0);
-    create_semaphore(&mutex, 1);
-
+    semaphore_init(&free, qsize);
+    semaphore_init(&occupied, 0);
+    semaphore_init(&mutex, 1);
     b.free = &free;
     b.occupied = &occupied;
     b.mutex = &mutex;
 
-    /* Initisalise arrays:
+    /* Declare arrays:
      * pids -> producer IDs
      * cids -> consumer IDs
      * pthreads -> thread IDs for producers
@@ -72,14 +73,14 @@ int main(int argc, char **argv) {
 
     /* Iteratively create producer threads based on 'nproducers' and execute
      * 'producer' on each. Store the thread ID in 'pthreads' and producer ID in
-     * 'pids'. Incase of failure, output an error message with code. */
+     * 'pids'. Incase of failure, output an error message and exit. */
     for (int n = 0; n < nproducers; n++) {
-        pids[n] = n;
-        int ret =
+        pids[n] = n + 1;
+        int rc =
             pthread_create(&pthreads[n], NULL, producer, (void *) &pids[n]);
-        if (ret) {
-            cerr << "[Error] pthread_create() for Producer(" << n
-                 << ") failed with return code: " << ret << endl;
+        if (rc) {
+            cerr << "[Error creating thread] pthread_create() for Producer("
+                 << n + 1 << ") failed with error code: " << rc << endl;
             exit(1);
         }
     }
@@ -87,12 +88,12 @@ int main(int argc, char **argv) {
     /* Create consumer threads based on 'nconsumers' in the same manner as for
      * producers. */
     for (int n = 0; n < nconsumers; n++) {
-        cids[n] = n;
-        int ret =
+        cids[n] = n + 1;
+        int rc =
             pthread_create(&cthreads[n], NULL, consumer, (void *) &cids[n]);
-        if (ret) {
-            cerr << "[Error] pthread_create() for Consumer(" << n
-                 << ") failed with return code: " << ret << endl;
+        if (rc) {
+            cerr << "[Error creating thread] pthread_create() for Consumer("
+                 << n + 1 << ") failed with error code: " << rc << endl;
             exit(1);
         }
     }
@@ -102,17 +103,17 @@ int main(int argc, char **argv) {
     join_threads(cthreads, nconsumers);
 
     // Destroy semaphores
-    destroy_semaphore(b.free);
-    destroy_semaphore(b.occupied);
-    destroy_semaphore(b.mutex);
+    semaphore_destroy(b.free);
+    semaphore_destroy(b.occupied);
+    semaphore_destroy(b.mutex);
 
     return 0;
 }
 
 /* Routine for each producer thread:
  * - Producer identified with unique 'id'
- * - Create a job every 1 - 5 seconds (up to a maximum number of jobs based on
- * user input) and add to the circular queue
+ * - Create a job every 1 - 5 seconds (up to a maximum number of jobs) and add
+ * to the circular queue (id attached based on position in queue)
  * -  Duration for each job is between 1 – 10 seconds
  * - If a job is taken by the consumer, then another job can be produced which
  * has the same id
@@ -120,43 +121,55 @@ int main(int argc, char **argv) {
  * reached upon which thread terminated
  * - Otherwise thread terminated when all jobs produced */
 void *producer(void *id) {
-
     // producer ID
     int *pid = (int *) id;
 
-    // given producer creates up to maximum of 'njobs'
+    // declare job and ts (point in time representing timeout)
+    Job job;
+    struct timespec ts;
+
+    // producer creates up to maximum of 'njobs'
     for (int j = 0; j < b.njobs; j++) {
 
         // create job every 1 - 5 seconds
         sleep(rand() % 5 + 1);
 
-        // TODO: do not print or anything during lock phase
+        // get current time and add timeout
+        ts.tv_sec = time(NULL) + timeout;
 
         /* initiate locks -
         - adding a job would decrement free slots available in queue
         - mutex decremented so only one producer or consumer at a time */
-        struct timespec ts;
-        ts.tv_sec = time(NULL) + timeout;
-        if (sem_timedwait(b.free, &ts) == -1) {
-            cout << "Producer(" << *pid << "): Timeout after 20 seconds"
-                 << endl;
+        if (sem_timedwait(b.free, &ts) == -1 && errno == ETIMEDOUT) {
+            // exit if blocking time exceeds timeout
+            printf("Producer(%i): Timeout after 20 seconds\n", *pid);
             pthread_exit(0);
         }
-        sem_wait(b.mutex);
+        if (sem_wait(b.mutex) == -1) {
+            perror("[Error locking semaphore 'mutex']");
+            pthread_exit(0);
+        }
 
-        // create job and add to the queue
-        Job job = {b.queue.size(), rand() % 10 + 1};
+        // critical section: create job and add to the queue
+        job = {(int) b.queue.size(), rand() % 10 + 1};
         b.queue.push_back(job);
-        cout << "Producer(" << *pid << "): Job id " << job.id << " duration "
-             << job.duration << endl;
 
         /* release locks -
-        - mutex incremented so producer or consumer can execute
+        - mutex incremented so producer / consumer can execute
         - occupied incremented to signal consumer to process job */
-        sem_post(b.mutex);
-        sem_post(b.occupied);
+        if (sem_post(b.mutex) == -1) {
+            perror("[Error unlocking semaphore 'mutex']");
+            pthread_exit(0);
+        }
+        if (sem_post(b.occupied) == -1) {
+            perror("[Error unlocking semaphore 'occupied']");
+            pthread_exit(0);
+        }
+
+        printf("Producer(%i): Job id %i duration %i\n", *pid, job.id,
+               job.duration);
     }
-    cout << "Producer(" << *pid << "): No more jobs to generate." << endl;
+    printf("Producer(%i): No more jobs to generate.\n", *pid);
 
     pthread_exit(0);
 }
@@ -164,37 +177,55 @@ void *producer(void *id) {
 /* Routine for each consumer thread:
  * - Consumer identified with unique 'id'
  * - Take a job from the circular queue and sleep for the specified duration
- * - If there are no jobs in the queue, wait until timeout reached upon
- * which thread is terminated. */
+ * - If there are no jobs in the queue, wait until timeout reached and
+ * terminate. */
 void *consumer(void *id) {
     // consumer ID
     int *cid = (int *) id;
 
-    // TODO: do not print or anything during lock phase
+    // declare job and ts (point in time representing timeout)
+    Job job;
+    struct timespec ts;
+
     while (true) {
 
-        /* initiate locks - */
-        struct timespec ts;
+        // get current time and add timeout
         ts.tv_sec = time(NULL) + timeout;
-        if (sem_timedwait(b.occupied, &ts) == -1) {
-            cout << "Consumer(" << *cid << "): No more jobs left." << endl;
+
+        /* initiate locks -
+        - consuming a job would decrement number of jobs occupying queue
+        - mutex decremented so only one producer / consumer at a time */
+        if (sem_timedwait(b.occupied, &ts) == -1 && errno == ETIMEDOUT) {
+            // exit if blocking time exceeds timeout
+            printf("Consumer(%i): No more jobs left.\n", *cid);
             pthread_exit(0);
         }
-        sem_wait(b.mutex);
+        if (sem_wait(b.mutex) == -1) {
+            perror("[Error locking semaphore 'mutex']");
+            pthread_exit(0);
+        }
 
-        // take job from front of queue
-        Job job = b.queue[0];
+        // critical section: take job from front of queue
+        job = b.queue[0];
         b.queue.pop_front();
-        cout << "Consumer(" << *cid << "): Job id " << job.id
-             << " executing sleep duration " << job.duration << endl;
 
-        /* release locks - */
-        sem_post(b.mutex);
-        sem_post(b.free);
+        /* release locks -
+        - mutex incremented so producer / consumer can execute
+        - free slots available incremented as job has been removed from queue */
+        if (sem_post(b.mutex) == -1) {
+            perror("[Error unlocking semaphore 'mutex']");
+            pthread_exit(0);
+        }
+        if (sem_post(b.free) == -1) {
+            perror("[Error unlocking semaphore 'free']");
+            pthread_exit(0);
+        }
+
+        printf("Consumer(%i): Job id %i executing sleep duration %i\n", *cid,
+               job.id, job.duration);
 
         // process job
         sleep(job.duration);
-        cout << "Consumer(" << *cid << "): Job id " << job.id << " completed"
-             << endl;
+        printf("Consumer(%i): Job id %i completed\n", *cid, job.id);
     }
 }
