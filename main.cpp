@@ -146,7 +146,7 @@ void *producer(void *id) {
         }
         if (sem_wait(b.mutex) == -1) {
             perror("[Error locking semaphore 'mutex']");
-            pthread_exit(1);
+            pthread_exit(0);
         }
 
         // critical section: create job and add to the queue
@@ -158,11 +158,11 @@ void *producer(void *id) {
         - occupied incremented to signal consumer to process job */
         if (sem_post(b.mutex) == -1) {
             perror("[Error unlocking semaphore 'mutex']");
-            pthread_exit(1);
+            pthread_exit(0);
         }
         if (sem_post(b.occupied) == -1) {
             perror("[Error unlocking semaphore 'occupied']");
-            pthread_exit(1);
+            pthread_exit(0);
         }
 
         cout << "Producer(" << *pid << "): Job id " << job.id << " duration "
@@ -197,7 +197,7 @@ void *consumer(void *id) {
         }
         if (sem_wait(b.mutex) == -1) {
             perror("[Error locking semaphore 'mutex']");
-            pthread_exit(1);
+            pthread_exit(0);
         }
 
         // critical section: take job from front of queue
@@ -209,11 +209,11 @@ void *consumer(void *id) {
         - free slots available incremented as job has been removed from queue */
         if (sem_post(b.mutex) == -1) {
             perror("[Error unlocking semaphore 'mutex']");
-            pthread_exit(1);
+            pthread_exit(0);
         }
         if (sem_post(b.free) == -1) {
             perror("[Error unlocking semaphore 'free']");
-            pthread_exit(1);
+            pthread_exit(0);
         }
 
         cout << "Consumer(" << *cid << "): Job id " << job.id
