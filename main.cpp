@@ -140,7 +140,7 @@ void *producer(void *id) {
         /* initiate locks -
         - adding a job would decrement free slots available in queue
         - mutex decremented so only one producer or consumer at a time */
-        if (sem_timedwait(b.free, &b.ts) == -1 && errno == ETIMEDOUT) {
+        if (sem_timedwait(b.free, &ts) == -1 && errno == ETIMEDOUT) {
             // exit if blocking time exceeds timeout
             printf("Producer(%i): Timeout after 20 seconds\n", *pid);
             pthread_exit(0);
@@ -195,7 +195,7 @@ void *consumer(void *id) {
         /* initiate locks -
         - consuming a job would decrement number of jobs occupying queue
         - mutex decremented so only one producer / consumer at a time */
-        if (sem_timedwait(b.occupied, &b.ts) == -1 && errno == ETIMEDOUT) {
+        if (sem_timedwait(b.occupied, &ts) == -1 && errno == ETIMEDOUT) {
             // exit if blocking time exceeds timeout
             printf("Consumer(%i): No more jobs left.\n", *cid);
             pthread_exit(0);
