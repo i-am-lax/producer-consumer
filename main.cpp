@@ -144,17 +144,26 @@ void *producer(void *id) {
                  << endl;
             pthread_exit(0);
         }
-        sem_wait(b.mutex);
+        if (sem_wait(b.mutex) == -1) {
+            perror("[Error locking semaphore 'mutex']");
+            pthread_exit(1);
+        }
 
-        // create job and add to the queue
+        // critical section: create job and add to the queue
         job = {(int) b.queue.size(), rand() % 10 + 1};
         b.queue.push_back(job);
 
         /* release locks -
         - mutex incremented so producer / consumer can execute
         - occupied incremented to signal consumer to process job */
-        sem_post(b.mutex);
-        sem_post(b.occupied);
+        if (sem_post(b.mutex) == -1) {
+            perror("[Error unlocking semaphore 'mutex']");
+            pthread_exit(1);
+        }
+        if (sem_post(b.occupied) == -1) {
+            perror("[Error unlocking semaphore 'occupied']");
+            pthread_exit(1);
+        }
 
         cout << "Producer(" << *pid << "): Job id " << job.id << " duration "
              << job.duration << endl;
@@ -186,17 +195,26 @@ void *consumer(void *id) {
             cout << "Consumer(" << *cid << "): No more jobs left." << endl;
             pthread_exit(0);
         }
-        sem_wait(b.mutex);
+        if (sem_wait(b.mutex) == -1) {
+            perror("[Error locking semaphore 'mutex']");
+            pthread_exit(1);
+        }
 
-        // take job from front of queue
+        // critical section: take job from front of queue
         job = b.queue[0];
         b.queue.pop_front();
 
         /* release locks -
         - mutex incremented so producer / consumer can execute
         - free slots available incremented as job has been removed from queue */
-        sem_post(b.mutex);
-        sem_post(b.free);
+        if (sem_post(b.mutex) == -1) {
+            perror("[Error unlocking semaphore 'mutex']");
+            pthread_exit(1);
+        }
+        if (sem_post(b.free) == -1) {
+            perror("[Error unlocking semaphore 'free']");
+            pthread_exit(1);
+        }
 
         cout << "Consumer(" << *cid << "): Job id " << job.id
              << " executing sleep duration " << job.duration << endl;
