@@ -44,6 +44,9 @@ int main(int argc, char **argv) {
     int nproducers = check_arg(argv[3]);
     int nconsumers = check_arg(argv[4]);
 
+    // Set the seed for rand()
+    srand(time(NULL));
+
     /* Populate Buffer data structure 'b' to be shared across threads
      * queue -> circular buffer with slots 'qsize' and of type 'Job'
      * njobs -> number of jobs per producer given by 'njobs'
@@ -52,7 +55,7 @@ int main(int argc, char **argv) {
      * available in 'queue'
      * mutex -> semaphore (initial value 1) so that access to the shared queue
      * is mutually exclusive */
-    b.queue = boost::circular_buffer<Job>(qsize);
+    b.queue = b.queue.set_capacity(qsize);
     b.njobs = njobs;
     // create semaphores and assign to pointers in buffer 'b'
     sem_t free, occupied, mutex;
@@ -73,7 +76,8 @@ int main(int argc, char **argv) {
 
     /* Iteratively create producer threads based on 'nproducers' and execute
      * 'producer' on each. Store the thread ID in 'pthreads' and producer ID in
-     * 'pids'. Incase of failure, output an error message and exit. */
+     * 'pids'. Incase of failure, output an error message. Do not exit because
+     * successful threads will still run. */
     for (int n = 0; n < nproducers; n++) {
         pids[n] = n + 1;
         int rc =
@@ -81,7 +85,6 @@ int main(int argc, char **argv) {
         if (rc) {
             cerr << "[Error creating thread] pthread_create() for Producer("
                  << n + 1 << ") failed with error code: " << rc << endl;
-            exit(1);
         }
     }
 
@@ -94,7 +97,6 @@ int main(int argc, char **argv) {
         if (rc) {
             cerr << "[Error creating thread] pthread_create() for Consumer("
                  << n + 1 << ") failed with error code: " << rc << endl;
-            exit(1);
         }
     }
 
@@ -140,14 +142,16 @@ void *producer(void *id) {
         /* initiate locks -
         - adding a job would decrement free slots available in queue
         - mutex decremented so only one producer or consumer at a time */
-        if (sem_timedwait(b.free, &ts) == -1 && errno == ETIMEDOUT) {
-            // exit if blocking time exceeds timeout
-            printf("Producer(%i): Timeout after 20 seconds\n", *pid);
-            pthread_exit(0);
+        if (sem_timedwait(b.free, &ts) == -1) {
+            if (errno == ETIMEDOUT) {
+                // exit if blocking time exceeds timeout
+                printf("Producer(%i): Timeout after 20 seconds\n", *pid);
+                pthread_exit(0);
+            } else
+                perror("[Error locking semaphore 'free']");
         }
         if (sem_wait(b.mutex) == -1) {
             perror("[Error locking semaphore 'mutex']");
-            pthread_exit(0);
         }
 
         // critical section: create job and add to the queue
@@ -159,11 +163,9 @@ void *producer(void *id) {
         - occupied incremented to signal consumer to process job */
         if (sem_post(b.mutex) == -1) {
             perror("[Error unlocking semaphore 'mutex']");
-            pthread_exit(0);
         }
         if (sem_post(b.occupied) == -1) {
             perror("[Error unlocking semaphore 'occupied']");
-            pthread_exit(0);
         }
 
         printf("Producer(%i): Job id %i duration %i\n", *pid, job.id,
@@ -195,14 +197,16 @@ void *consumer(void *id) {
         /* initiate locks -
         - consuming a job would decrement number of jobs occupying queue
         - mutex decremented so only one producer / consumer at a time */
-        if (sem_timedwait(b.occupied, &ts) == -1 && errno == ETIMEDOUT) {
-            // exit if blocking time exceeds timeout
-            printf("Consumer(%i): No more jobs left.\n", *cid);
-            pthread_exit(0);
+        if (sem_timedwait(b.occupied, &ts) == -1) {
+            if (errno == ETIMEDOUT) {
+                // exit if blocking time exceeds timeout
+                printf("Consumer(%i): No more jobs left.\n", *cid);
+                pthread_exit(0);
+            } else
+                perror("[Error locking semaphore 'occupied']");
         }
         if (sem_wait(b.mutex) == -1) {
             perror("[Error locking semaphore 'mutex']");
-            pthread_exit(0);
         }
 
         // critical section: take job from front of queue
@@ -214,11 +218,9 @@ void *consumer(void *id) {
         - free slots available incremented as job has been removed from queue */
         if (sem_post(b.mutex) == -1) {
             perror("[Error unlocking semaphore 'mutex']");
-            pthread_exit(0);
         }
         if (sem_post(b.free) == -1) {
             perror("[Error unlocking semaphore 'free']");
-            pthread_exit(0);
         }
 
         printf("Consumer(%i): Job id %i executing sleep duration %i\n", *cid,

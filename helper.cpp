@@ -31,16 +31,15 @@ void semaphore_init(sem_t *sem, unsigned int value) {
 }
 
 /* Wrapper around sem_destroy() to destroy a semaphore at the address pointed to
- * by 'sem'. Output an error message and exit if unsuccessful. */
+ * by 'sem'. Output an error message if unsuccessful. */
 void semaphore_destroy(sem_t *sem) {
     if (sem_destroy(sem) == -1) {
         perror("[Error destroying semaphore]");
-        exit(1);
     }
 }
 
 /* Iteratively join threads based on IDs in 'threads' array of size 'nthreads'.
- * Output an error message and exit if unsuccessful. */
+ * Output an error message if unsuccessful. */
 void join_threads(pthread_t *threads, const int &nthreads) {
     for (int t = 0; t < nthreads; t++) {
         int rc = pthread_join(threads[t], NULL);
@@ -49,7 +48,6 @@ void join_threads(pthread_t *threads, const int &nthreads) {
             cerr << "[Error joining thread] pthread_join() failed with return "
                     "code: "
                  << rc << endl;
-            exit(1);
         }
     }
 }
