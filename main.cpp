@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
      * available in 'queue'
      * mutex -> semaphore (initial value 1) so that access to the shared queue
      * is mutually exclusive */
-    b.queue = b.queue.set_capacity(qsize);
+    b.queue.set_capacity(qsize);
     b.njobs = njobs;
     // create semaphores and assign to pointers in buffer 'b'
     sem_t free, occupied, mutex;
