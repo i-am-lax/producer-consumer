@@ -150,9 +150,8 @@ void *producer(void *id) {
             } else
                 perror("[Error locking semaphore 'free']");
         }
-        if (sem_wait(b.mutex) == -1) {
+        if (sem_wait(b.mutex) == -1)
             perror("[Error locking semaphore 'mutex']");
-        }
 
         // critical section: create job and add to the queue
         job = {(int) b.queue.size(), rand() % 10 + 1};
@@ -161,12 +160,10 @@ void *producer(void *id) {
         /* release locks -
         - mutex incremented so producer / consumer can execute
         - occupied incremented to signal consumer to process job */
-        if (sem_post(b.mutex) == -1) {
+        if (sem_post(b.mutex) == -1)
             perror("[Error unlocking semaphore 'mutex']");
-        }
-        if (sem_post(b.occupied) == -1) {
+        if (sem_post(b.occupied) == -1)
             perror("[Error unlocking semaphore 'occupied']");
-        }
 
         printf("Producer(%i): Job id %i duration %i\n", *pid, job.id,
                job.duration);
@@ -205,9 +202,8 @@ void *consumer(void *id) {
             } else
                 perror("[Error locking semaphore 'occupied']");
         }
-        if (sem_wait(b.mutex) == -1) {
+        if (sem_wait(b.mutex) == -1)
             perror("[Error locking semaphore 'mutex']");
-        }
 
         // critical section: take job from front of queue
         job = b.queue[0];
@@ -216,12 +212,10 @@ void *consumer(void *id) {
         /* release locks -
         - mutex incremented so producer / consumer can execute
         - free slots available incremented as job has been removed from queue */
-        if (sem_post(b.mutex) == -1) {
+        if (sem_post(b.mutex) == -1)
             perror("[Error unlocking semaphore 'mutex']");
-        }
-        if (sem_post(b.free) == -1) {
+        if (sem_post(b.free) == -1)
             perror("[Error unlocking semaphore 'free']");
-        }
 
         printf("Consumer(%i): Job id %i executing sleep duration %i\n", *cid,
                job.id, job.duration);

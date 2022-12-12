@@ -33,9 +33,8 @@ void semaphore_init(sem_t *sem, unsigned int value) {
 /* Wrapper around sem_destroy() to destroy a semaphore at the address pointed to
  * by 'sem'. Output an error message if unsuccessful. */
 void semaphore_destroy(sem_t *sem) {
-    if (sem_destroy(sem) == -1) {
+    if (sem_destroy(sem) == -1)
         perror("[Error destroying semaphore]");
-    }
 }
 
 /* Iteratively join threads based on IDs in 'threads' array of size 'nthreads'.
